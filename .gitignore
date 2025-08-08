@@ -3,6 +3,12 @@
 *.pth
 *.tar
 
+
+# Images #
+#########
+*.jpg
+*.png
+
 # OS generated files #
 ######################
 .DS_Store
