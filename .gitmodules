@@ -1,0 +1,3 @@
+[submodule "mPLUG"]
+	path = mPLUG
+	url = https://github.com/X-PLUG/mPLUG
