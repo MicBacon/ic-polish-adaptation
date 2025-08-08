@@ -2,7 +2,7 @@ pip install colorlog
 apt-get update
 apt-get install default-jdk
 apt-get install default-jre
-pip install git+git://github.com/j-min/language-evaluation@master
+pip install -e language-evaluation
 python -c "import language_evaluation; language_evaluation.download('coco')"
 
 for lr in 1e-5
@@ -15,5 +15,7 @@ do
     --lr $lr \
     --min_length 8 \
     --max_length 25 \
-    --max_input_length 25
+    --max_input_length 25 \
+    --device mps \
+    --evaluate 1
 done

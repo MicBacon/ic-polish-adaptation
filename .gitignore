@@ -1,9 +1,8 @@
-# Checkpoints and backbones #
-############################ 
+# Unwanted ungrouped extensions #
+#################################
 *.pth
 *.tar
 *.pyc
-
 
 # Images #
 #########
