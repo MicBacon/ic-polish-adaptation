@@ -1,3 +1,9 @@
+# Unwanted big files and folders #
+##################################
+mPLUG/output
+shared/data/coco_object
+shared/data/flickr30k
+
 # Unwanted ungrouped extensions #
 #################################
 *.pth

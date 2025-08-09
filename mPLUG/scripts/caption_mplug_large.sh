@@ -16,6 +16,6 @@ do
     --min_length 8 \
     --max_length 25 \
     --max_input_length 25 \
-    --device mps \
-    --evaluate 1
+    --evaluate
+    #--device mps \
 done
