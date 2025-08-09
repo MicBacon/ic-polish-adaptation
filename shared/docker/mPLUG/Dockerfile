@@ -22,8 +22,8 @@ WORKDIR /workspace/main
 COPY . .
 
 # Instalacja zależności Pythona
-RUN pip install --upgrade pip
-RUN RUN pip install -r mPLUG/requirements.txt
+RUN python -m pip install --upgrade pip
+RUN python -m pip install -r mPLUG/requirements.txt
 
 # Instalacja bibliotek ze źródeł
 RUN git clone --recursive https://github.com/dmlc/decord && \
