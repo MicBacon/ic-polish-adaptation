@@ -183,8 +183,8 @@ def main(args, config):
     cudnn.benchmark = True
 
     start_epoch = 0
-    max_epoch = config['schedular']['epochs']
-    warmup_steps = config['schedular']['warmup_epochs']
+    max_epoch = config['scheduler']['epochs']
+    warmup_steps = config['scheduler']['warmup_epochs']
 
     #### Dataset ####
     print("Creating vqa datasets")
@@ -217,7 +217,7 @@ def main(args, config):
         arg_opt = utils.AttrDict(config['optimizer'])
         optimizer = create_two_optimizer(arg_opt, model)
 
-    arg_sche = utils.AttrDict(config['schedular'])
+    arg_sche = utils.AttrDict(config['scheduler'])
     lr_scheduler, _ = create_scheduler(arg_sche, optimizer)
 
     if args.do_amp:
@@ -348,7 +348,7 @@ if __name__ == '__main__':
     config["add_object"] = args.add_object
     config["beam_size"] = args.beam_size
     #config['optimizer']['lr'] = args.lr
-    #config['schedular']['lr'] = args.lr
+    #config['scheduler']['lr'] = args.lr
     config['text_encoder'] = args.text_encoder
     config['text_decoder'] = args.text_decoder
 
