@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Instalacja zależności systemowych
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	python3.9 python3.9-venv python3.9-dev python3-pip git \
+	python3.9 python3.9-venv python3.9-dev python3-pip git nano \
 	software-properties-common build-essential python3-setuptools make cmake \
 	ffmpeg libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev && \
 	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
