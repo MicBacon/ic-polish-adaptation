@@ -32,7 +32,33 @@ RUN git clone --recursive https://github.com/dmlc/decord && \
 	cmake .. -DUSE_CUDA=0 -DCMAKE_BUILD_TYPE=Release && \
 	make
 
+RUN git clone https://github.com/NVIDIA/apex && \
+	cd apex && \
+	# Fix Python 3.9 compatibility
+	sed -i '1i from typing import Optional' setup.py && \
+	sed -i 's/parallel: int | None = None/parallel: Optional[int] = None/' setup.py && \
+	# Disable CUDA version check
+	sed -i '/def check_cuda_torch_binary_vs_bare_metal(cuda_dir):/,/^$/s/^/#/' setup.py && \
+	sed -i '/check_cuda_torch_binary_vs_bare_metal(CUDA_HOME)/s/^/#/' setup.py && \
+	# Set environment variables
+	export CUDA_HOME=/usr/local/cuda && \
+	export TORCH_CUDA_ARCH_LIST="9.0" && \
+	export MAX_JOBS=4 && \
+	# Install
+	python setup.py install --cuda_ext --cpp_ext && \
+	# Apply compatibility patches
+	SITE_PACKAGES=$(python -c "import site; print(site.getsitepackages()[0])") && \
+	find "$SITE_PACKAGES/apex" -type f -name "*.py" -exec sed -i \
+	-e "s/from torch\._six import container_abcs/import collections.abc as container_abcs/g" \
+	-e "s/from torch\._six import string_classes/from torch._utils import string_classes/g" \
+	-e "s/import torch\._six/import collections.abc as container_abcs/g" {} +
+
 # RUN cd /workspace/main/mPLUG && \
 # 	git clone https://github.com/j-min/language-evaluation && \
 # 	pip install -e language-evaluation
 
+# pobranie datasetu
+RUN git clone https://github.com/your-dataset-repo.git /workspace/main/mPLUG/dataset
+
+# pobranie checkpointów oraz backbone
+RUN wget 
