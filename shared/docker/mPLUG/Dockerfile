@@ -52,8 +52,7 @@ RUN git clone --recursive https://github.com/dmlc/decord && \
 # 	-e "s/from torch\._six import string_classes/from torch._utils import string_classes/g" \
 # 	-e "s/import torch\._six/import collections.abc as container_abcs/g" {} +
 
-RUN cd /workspace/main/ic-polish-adaptation/mPLUG && \
-	git clone https://github.com/j-min/language-evaluation && \
+RUN cd mPLUG && git clone https://github.com/j-min/language-evaluation && \
 	pip install -e language-evaluation
 
 # pobranie datasetu coco
@@ -68,6 +67,5 @@ RUN cd /workspace/main/ic-polish-adaptation/mPLUG && \
 # 	unzip test2014.zip && rm test2014.zip
 
 # pobranie checkpointów oraz backbone
-RUN cd /workspace/main/ic-polish-adaptation/mPLUG && \
-	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/mplug_large_v2.pth && \
+RUN cd mPLUG && wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/mplug_large_v2.pth && \
 	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/ViT-L-14.tar
