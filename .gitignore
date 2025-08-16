@@ -1,7 +1,7 @@
 # Unwanted big files and folders #
 ##################################
 mPLUG/output
-shared/data/coco_object/coco2014/
+shared/data/coco_object/coco2014/*.jpg
 shared/data/coco_object/*.json
 shared/data/flickr30k/*.json
 shared/data/flickr30k/Images/

@@ -1,11 +1,10 @@
 FROM nvidia/cuda:12.4.0-devel-ubuntu20.04
 
-# Ustawienie DEBIAN_FRONTEND na noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Instalacja zależności systemowych
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	python3.9 python3.9-venv python3.9-dev python3-pip git nano wget unzip \
+	python3.9 python3.9-venv python3.9-dev python3-pip git nano wget unzip untar \
 	software-properties-common build-essential python3-setuptools make cmake \
 	ffmpeg libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev && \
 	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
@@ -53,12 +52,21 @@ RUN git clone https://github.com/NVIDIA/apex && \
 	-e "s/from torch\._six import string_classes/from torch._utils import string_classes/g" \
 	-e "s/import torch\._six/import collections.abc as container_abcs/g" {} +
 
-# RUN cd /workspace/main/mPLUG && \
-# 	git clone https://github.com/j-min/language-evaluation && \
-# 	pip install -e language-evaluation
+RUN cd /workspace/main/ic-polish-adaptation/mPLUG && \
+	git clone https://github.com/j-min/language-evaluation && \
+	pip install -e language-evaluation
 
-# pobranie datasetu
-RUN git clone https://github.com/your-dataset-repo.git /workspace/main/mPLUG/dataset
+# pobranie datasetu coco
+RUN cd /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
+	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/data.tar && \
+	untar -xvf data.tar -C /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
+	rm data.tar && cd data && mv -v coco_object/.[!.]* /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
+	rm -rf data && cd coco_2014 && mkdir val_2014 train_2014 test_2014 && cd train2014 && wget http://images.cocodataset.org/zips/train2014.zip && \
+	unzip train2014.zip && rm train2014.zip && cd ../val_2014 && wget http://images.cocodataset.org/zips/val2014.zip && \
+	unzip val2014.zip && rm val2014.zip && cd ../test_2014 && wget http://images.cocodataset.org/zips/test2014.zip && \
 
-# pobranie checkpointów oraz backbone
-RUN wget 
+
+	# pobranie checkpointów oraz backbone
+	RUN cd /workspace/main/mPLUG && \
+	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/mplug_large_v2.pth && \
+	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/ViT-L-14.tar
