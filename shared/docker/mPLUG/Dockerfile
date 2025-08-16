@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Instalacja zależności systemowych
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	python3.9 python3.9-venv python3.9-dev python3-pip git nano wget unzip untar \
+	python3.9 python3.9-venv python3.9-dev python3-pip git nano wget unzip tar \
 	software-properties-common build-essential python3-setuptools make cmake \
 	ffmpeg libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev && \
 	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
@@ -57,16 +57,17 @@ RUN cd /workspace/main/ic-polish-adaptation/mPLUG && \
 	pip install -e language-evaluation
 
 # pobranie datasetu coco
-RUN cd /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
+RUN mkdir -p /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
+	cd /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
 	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/data.tar && \
-	untar -xvf data.tar -C /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
+	tar -xvf data.tar -C /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
 	rm data.tar && cd data && mv -v coco_object/.[!.]* /workspace/main/ic-polish-adaptation/shared/data/coco_object/ && \
 	rm -rf data && cd coco_2014 && mkdir val_2014 train_2014 test_2014 && cd train2014 && wget http://images.cocodataset.org/zips/train2014.zip && \
 	unzip train2014.zip && rm train2014.zip && cd ../val_2014 && wget http://images.cocodataset.org/zips/val2014.zip && \
 	unzip val2014.zip && rm val2014.zip && cd ../test_2014 && wget http://images.cocodataset.org/zips/test2014.zip && \
+	unzip test2014.zip && rm test2014.zip
 
-
-	# pobranie checkpointów oraz backbone
-	RUN cd /workspace/main/mPLUG && \
+# pobranie checkpointów oraz backbone
+RUN cd /workspace/main/mPLUG && \
 	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/mplug_large_v2.pth && \
 	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/ViT-L-14.tar
