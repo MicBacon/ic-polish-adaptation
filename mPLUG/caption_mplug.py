@@ -291,7 +291,7 @@ def main(args, config):
             break
 
         vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
-        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
+        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_%s_epoch%d' % (args.dataset, epoch))
         if utils.is_main_process():
             result = cal_metric(result_file)
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
