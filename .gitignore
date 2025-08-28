@@ -9,6 +9,7 @@ shared/data/flickr30k
 *.pth
 *.tar
 *.pyc
+*.hdf5
 
 # Images #
 #########
