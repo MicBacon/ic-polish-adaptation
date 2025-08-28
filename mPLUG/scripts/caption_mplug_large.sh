@@ -17,7 +17,7 @@ do
     --min_length 8 \
     --max_length 25 \
     --max_input_length 25 \
-    --evaluate \
     --device mps \
     --dataset flickr30k
+    #--evaluate \
 done

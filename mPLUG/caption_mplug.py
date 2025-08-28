@@ -1,6 +1,6 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import language_evaluation
 import numpy as np
 import random
@@ -359,7 +359,6 @@ if __name__ == '__main__':
     #config['scheduler']['lr'] = args.lr
     config['text_encoder'] = args.text_encoder
     config['text_decoder'] = args.text_decoder
-
 
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))
 
