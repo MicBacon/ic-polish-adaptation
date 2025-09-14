@@ -18,7 +18,8 @@ except ImportError as e:
 
 # Bleu_1 also deactivates 2, 3 and 4
 # SPICE causes problem regarding java library
-metrics_to_omit = ['Bleu_1', 'SPICE']
+metrics_to_omit = ['SPICE']
+caption_count = 3783 #3783 = max caption count
 
 # Only use metrics that don't require Theano
 nlgeval = NLGEval(metrics_to_omit=metrics_to_omit, no_skipthoughts=True, no_glove=True)
@@ -33,11 +34,9 @@ with open(os.path.join(result_path, 'vqa_result_flickr30k_epoch4.json'), 'r') as
     os.makedirs("output/coco_caption_large/result_translated", exist_ok=True)
 
     r = open("output/coco_caption_large/result_translated/vqa_result_epoch10_rank0_translated_captions.json", "w")
-
-    references = []
-    hypotheses = []
-
-    for item in data[:5]:
+    r.write('[')
+    
+    for idx, item in enumerate(data[:caption_count]):
        caption = item['pred_caption']
 
        # polish supported:
@@ -49,7 +48,11 @@ with open(os.path.join(result_path, 'vqa_result_flickr30k_epoch4.json'), 'r') as
        # deepl -> high quality to translate but response slowly
        # argos -> open-source
 
-       print('Attempting to translate "{}"...'.format(caption))
+       #print('Attempting to translate "{}"...'.format(caption))
+       if(caption == ""):
+           caption = "a photo"
+           print("found empty caption: \n", item)
+
        caption_pl = ts.translate_text(caption, translator='google', to_language='pl')
 
        # calculate multilingual translation bert scores
@@ -67,19 +70,36 @@ with open(os.path.join(result_path, 'vqa_result_flickr30k_epoch4.json'), 'r') as
                if row[0] == item['question_id'].split('.')[0]:
                    captions_pl.append(row[1])
 
-       references.append(captions_pl)
-       hypotheses.append(caption_pl)
+       # check if polish references exist
+       if(len(captions_pl) > 0):
+           # calculate image captioning metrics
+           captioning_metrics = nlgeval.compute_individual_metrics(captions_pl, caption_pl)
 
-       # calculate image captioning metrics
-       captioning_metrics = nlgeval.compute_individual_metrics(captions_pl, caption_pl)
+           json.dump({"question_id": item['question_id'], "pred_caption": caption, "translated_caption": caption_pl,
+                    "translation_scores":{"P":P.numpy().tolist(), "R":R.numpy().tolist(), "F1":F1.numpy().tolist()},
+                    "polish_references": captions_pl,
+                    "captioning_metrics": captioning_metrics},
+                    r, ensure_ascii=False)
+        
+           if (idx % 100 == 0):
+            print(f"Processed {idx} captions.")
 
-       json.dump({"question_id": item['question_id'], "pred_caption": caption, "translated_caption": caption_pl,
-                   "translation_scores":{"P":P.numpy().tolist(), "R":R.numpy().tolist(), "F1":F1.numpy().tolist()},
-                   "polish_references": captions_pl,
-                   "captioning_metrics": captioning_metrics},
-                   r, ensure_ascii=False)
+           if idx < caption_count - 1:
+            r.write(',\n')
 
-       r.write('\n')
+    r.write('\n],')
+    r.write('[')
 
-    print(nlgeval.compute_metrics(references, hypotheses))
+    
+    with open("output/coco_caption_large/result_translated/vqa_result_epoch10_rank0_translated_captions.json", "r") as f:
+        data = json.load(f)
+        references = []
+        hypotheses = []
+        for item in data:
+            references.append(item['polish_references'])
+            hypotheses.append(item['translated_caption'])
+        scores = nlgeval.compute_metrics(references, hypotheses)
+        #json.dump({"overall_scores": scores}, r, ensure_ascii=False)
+        print(scores)
+    r.write(']')
     r.close()
