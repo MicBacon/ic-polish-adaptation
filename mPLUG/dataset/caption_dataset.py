@@ -57,8 +57,6 @@ class re_train_dataset(Dataset):
 
         return image, caption, self.img_ids[ann['image_id']]
     
-    
-
 class re_eval_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root, max_words=30):        
         self.ann = json.load(open(ann_file,'r'))
@@ -223,6 +221,7 @@ class coco_dataset(Dataset):
                 break
                 
         return image, caption, object_label, image_id, ann["gold_caption"]
+
 class pretrain_dataset_4m(Dataset):
     def __init__(self, ann_file, transform, max_words=30, read_local_data=True, image_root="", epoch=None):
         self.ann = []
@@ -270,3 +269,51 @@ class pretrain_dataset_4m(Dataset):
                 break
                 
         return image, caption
+    
+class flickr30k_dataset(Dataset):
+    def __init__(self, ann_file, transform, root_path, max_words=30, read_local_data=True, is_train=True):
+        self.ann = []
+        for f in ann_file:
+            self.ann += json.load(open(f,'r'))
+        self.transform = transform
+        self.max_words = max_words
+        self.read_local_data = read_local_data
+        self.root_path = root_path
+
+        self.ann_new = []
+
+        for each in self.ann:
+            filename = each["image_id"]
+            captions = each["captions"]
+
+            image_path = os.path.join(self.root_path, "Images", filename)
+            gold_caption = []
+
+            for capt in captions:
+                gold_caption.append(capt.lower())
+            if is_train:
+                for capt in captions:
+                    self.ann_new.append({"image": image_path, "caption": capt.lower(), "gold_caption": gold_caption})
+            else:
+                self.ann_new.append({"image": image_path, "caption": captions[0].lower(), "gold_caption": gold_caption})
+        self.ann = self.ann_new
+        del self.ann_new
+        
+    def __len__(self):
+        return len(self.ann)
+    
+    def __getitem__(self, index):    
+        
+        ann = self.ann[index]
+        
+        if type(ann['caption']) == list:
+            caption = pre_caption(random.choice(ann['caption']), self.max_words)
+        else:
+            caption = pre_caption(ann['caption'], self.max_words)
+
+        image_path = ann['image']
+        image_id = ann['image'].split("/")[-1]
+        image = Image.open(image_path).convert('RGB')
+        image = self.transform(image)
+
+        return image, caption, "", image_id, ann['gold_caption']

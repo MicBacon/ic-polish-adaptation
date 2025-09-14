@@ -1,3 +1,6 @@
 [submodule "mPLUG/language-evaluation"]
 	path = mPLUG/language-evaluation
 	url = https://github.com/j-min/language-evaluation
+[submodule "mPLUG/nlg-eval"]
+	path = mPLUG/nlg-eval
+	url = https://github.com/Maluuba/nlg-eval

@@ -1,6 +1,6 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import language_evaluation
 import numpy as np
 import random
@@ -22,7 +22,7 @@ from models.tokenization_bert import BertTokenizer
 
 import utils
 from dataset.utils import save_result
-from dataset import create_dataset, create_sampler, create_loader, coco_collate_fn
+from dataset import create_dataset, create_sampler, create_loader, coco_collate_fn, flickr30k_collate_fn
 
 from scheduler import create_scheduler
 from optim import create_optimizer, create_two_optimizer
@@ -96,9 +96,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     print("Averaged stats:", metric_logger.global_avg())
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}
 
-
 @torch.no_grad()
-def evaluation(model, data_loader, tokenizer, device, config):
+def evaluation(model, data_loader, tokenizer, device, config, dataset):
     # test
     model.eval()
 
@@ -108,8 +107,8 @@ def evaluation(model, data_loader, tokenizer, device, config):
 
     result = []
 
-
     answer_input = None
+
     for n, (image, caption, object_labels, image_ids, gold_caption) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):        
         image = image.to(device,non_blocking=True)             
         caption = [each+config['eos'] for each in caption]
@@ -125,6 +124,7 @@ def evaluation(model, data_loader, tokenizer, device, config):
 
 @torch.no_grad()
 def evaluate(model, data_loader, dataset, tokenizer, device, config):
+
     # test
     model.eval()
 
@@ -158,6 +158,7 @@ def evaluate(model, data_loader, dataset, tokenizer, device, config):
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())
     return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}
+
 def cal_metric(result_file):
     result_list = json.load(open(result_file, "r"))
     predicts = []
@@ -183,12 +184,12 @@ def main(args, config):
     cudnn.benchmark = True
 
     start_epoch = 0
-    max_epoch = config['schedular']['epochs']
-    warmup_steps = config['schedular']['warmup_epochs']
+    max_epoch = config['scheduler']['epochs']
+    warmup_steps = config['scheduler']['warmup_epochs']
 
     #### Dataset ####
     print("Creating vqa datasets")
-    datasets = create_dataset('coco', config)
+    datasets = create_dataset(args.dataset, config)
 
     if args.distributed:
         num_tasks = utils.get_world_size()
@@ -197,10 +198,16 @@ def main(args, config):
     else:
         samplers = [None, None, None]
 
-    train_loader, val_loader, test_loader = create_loader(datasets,samplers,
-                                              batch_size=[config['batch_size_train'],config['batch_size_test'], config['batch_size_test']],
-                                              num_workers=[8,8,8],is_trains=[True, False, False], 
-                                              collate_fns=[coco_collate_fn, coco_collate_fn, coco_collate_fn]) 
+    if args.dataset == 'coco':
+        train_loader, val_loader, test_loader = create_loader(datasets,samplers,
+                                                batch_size=[config['batch_size_train'],config['batch_size_test'], config['batch_size_test']],
+                                                num_workers=[8,8,8],is_trains=[True, False, False], 
+                                                collate_fns=[coco_collate_fn, coco_collate_fn, coco_collate_fn]) 
+    elif args.dataset == 'flickr30k':
+        train_loader, val_loader, test_loader = create_loader(datasets,samplers,
+                                                batch_size=[config['batch_size_train'],config['batch_size_test'], config['batch_size_test']],
+                                                num_workers=[8,8,8],is_trains=[True, False, False], 
+                                                collate_fns=[flickr30k_collate_fn, flickr30k_collate_fn, flickr30k_collate_fn])
 
 
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
@@ -217,7 +224,7 @@ def main(args, config):
         arg_opt = utils.AttrDict(config['optimizer'])
         optimizer = create_two_optimizer(arg_opt, model)
 
-    arg_sche = utils.AttrDict(config['schedular'])
+    arg_sche = utils.AttrDict(config['scheduler'])
     lr_scheduler, _ = create_scheduler(arg_sche, optimizer)
 
     if args.do_amp:
@@ -263,7 +270,7 @@ def main(args, config):
 
     print("Start training")
     start_time = time.time()
-    vqa_result = evaluation(model, test_loader, tokenizer, device, config)
+    vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
     result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch10')
     if utils.is_main_process():
         result = cal_metric(result_file)
@@ -283,8 +290,8 @@ def main(args, config):
         if args.evaluate:
             break
 
-        vqa_result = evaluation(model, test_loader, tokenizer, device, config)
-        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
+        vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
+        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_%s_epoch%d' % (args.dataset, epoch))
         if utils.is_main_process():
             result = cal_metric(result_file)
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
@@ -335,6 +342,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_init_decocde', action='store_true')
     parser.add_argument('--do_accum', action='store_true')
     parser.add_argument('--accum_steps', default=4, type=int)
+    parser.add_argument('--dataset', default='coco', type=str, help='dataset name')
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
@@ -348,10 +356,9 @@ if __name__ == '__main__':
     config["add_object"] = args.add_object
     config["beam_size"] = args.beam_size
     #config['optimizer']['lr'] = args.lr
-    #config['schedular']['lr'] = args.lr
+    #config['scheduler']['lr'] = args.lr
     config['text_encoder'] = args.text_encoder
     config['text_decoder'] = args.text_decoder
-
 
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))
 

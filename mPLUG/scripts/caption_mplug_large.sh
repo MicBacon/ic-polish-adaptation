@@ -7,7 +7,8 @@ python -c "import language_evaluation; language_evaluation.download('coco')"
 
 for lr in 1e-5
 do
-    CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port=3224  --use_env caption_mplug.py \
+    #CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=4 --master_port=3224  --use_env caption_mplug.py \
+    python caption_mplug.py \
     --config ./configs/caption_mplug_large.yaml \
     --output_dir output/coco_caption_large \
     --checkpoint ./mplug_large_v2.pth \
@@ -16,6 +17,7 @@ do
     --min_length 8 \
     --max_length 25 \
     --max_input_length 25 \
-    --evaluate
-    #--device mps \
+    --device mps \
+    --dataset flickr30k
+    #--evaluate \
 done

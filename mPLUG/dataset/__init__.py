@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from PIL import Image
 
-from dataset.caption_dataset import re_train_dataset, re_eval_dataset, pretrain_dataset_4m, coco_dataset, nocaps_dataset
+from dataset.caption_dataset import re_train_dataset, re_eval_dataset, pretrain_dataset_4m, coco_dataset, nocaps_dataset, flickr30k_dataset
 from dataset.nlvr_dataset import nlvr_dataset
 from dataset.ve_dataset import ve_dataset
 from dataset.vqa_dataset import vqa_dataset
@@ -16,7 +16,9 @@ from dataset.randaugment import RandomAugment
 def create_dataset(dataset, config, epoch=None):
     
     normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-    
+
+    # NOTE: BUCIBUC interpolation may be slower than bilinear, but considers 4x4 pixels instead of 2x2
+
     pretrain_transform = transforms.Compose([                        
             transforms.RandomResizedCrop(config['image_res'],scale=(0.2, 1.0), interpolation=Image.BICUBIC),
             transforms.RandomHorizontalFlip(),
@@ -34,7 +36,7 @@ def create_dataset(dataset, config, epoch=None):
             normalize,
         ])  
     test_transform = transforms.Compose([
-        transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC),
+        transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC), 
         transforms.ToTensor(),
         normalize,
         ])   
@@ -91,8 +93,6 @@ def create_dataset(dataset, config, epoch=None):
         }
         test_datasets = {split:build_vg_dataset(split=split,args=config,dataset_name=eval_dataset) for split in eval_split[eval_dataset]}
         return train_dataset, val_dataset,test_datasets
-    
-
 
     elif dataset=='video_qa': 
         train_dataset = videoqa_dataset(config['train_file'], train_transform, config['videoqa_root'], split='train', read_local_data=config['read_local_data'], max_img_size=config['image_res'])  
@@ -103,6 +103,12 @@ def create_dataset(dataset, config, epoch=None):
     elif dataset== 'vatex_video_caps':
         test_dataset = vatex_video_caps_dataset(config['test_file'], config['vatex_video_caps_root'], max_words=config['max_length'], read_local_data=config['read_local_data'], is_train=False, num_frm=config['num_frm_test'], max_img_size=config['image_res'], frm_sampling_strategy='uniform')
         return test_dataset
+    
+    elif dataset=='flickr30k':
+        train_dataset = flickr30k_dataset(config['train_file'], train_transform, config['flickr30k_root'], max_words=config['max_length'], read_local_data=config['read_local_data'], is_train=True)
+        val_dataset = flickr30k_dataset(config['val_file'], test_transform, config['flickr30k_root'], max_words=config['max_length'], read_local_data=config['read_local_data'], is_train=False)
+        test_dataset = flickr30k_dataset(config['test_file'], test_transform, config['flickr30k_root'], max_words=config['max_length'], read_local_data=config['read_local_data'], is_train=False)
+        return train_dataset, val_dataset, test_dataset
 
 def videoqa_collate_fn(batch):
     image_list, question_list, answer_list, n = [], [], [], []
@@ -129,6 +135,7 @@ def nocaps_collate_fn(batch):
         image_list.append(image)
         image_id_list.append(image_id)
     return torch.stack(image_list,dim=0), image_id_list
+
 def coco_collate_fn(batch):
     image_list, caption_list, object_labels, image_id_list, gold_caption_list = [], [], [], [], []
     for image, caption, object_label, image_id, gold_caption in batch:
@@ -139,6 +146,15 @@ def coco_collate_fn(batch):
         object_labels.append(object_label)
     return torch.stack(image_list,dim=0), caption_list, object_labels, image_id_list, gold_caption_list
 
+def flickr30k_collate_fn(batch):
+    image_list, caption_list, object_label_list, image_id_list, gold_caption_list = [], [], [], [], []
+    for image, caption, object_label, image_id, gold_caption in batch:
+        image_list.append(image)
+        caption_list.append(caption)
+        object_label_list.append(object_label)
+        image_id_list.append(image_id)
+        gold_caption_list.append(gold_caption)
+    return torch.stack(image_list,dim=0), caption_list, object_label_list, image_id_list, gold_caption_list
 
 def create_sampler(datasets, shuffles, num_tasks, global_rank):
     samplers = []
