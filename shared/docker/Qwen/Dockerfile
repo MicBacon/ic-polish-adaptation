@@ -20,7 +20,7 @@ RUN pip install -U pip setuptools wheel && \
     "datasets>=2.20" \
     "pycocoevalcap==1.2" \
     "bleu==0.3" \
-    evaluate rouge_score nltk bert_score pacy sacrebleu \
+    evaluate rouge_score nltk bert_score sacrebleu \
     pillow sentencepiece "timm>=0.9" einops \
     qwen-vl-utils \
     flash-attn --no-build-isolation
