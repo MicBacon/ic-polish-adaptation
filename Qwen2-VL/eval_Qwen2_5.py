@@ -241,8 +241,7 @@ def main():
     metrics = {}
     if any(len(r) > 0 and any(x.strip() for x in r) for r in references):
         metrics = metrics_fn(
-            predictions, references,
-            image_paths=image_paths_for_metrics
+            predictions, references, image_paths_for_metrics
         )
     else:
         metrics = {"note": "Brak referencji w pliku testowym - metryki pominięte.", "N": len(predictions)}
