@@ -18,13 +18,11 @@ RUN pip install -U pip setuptools wheel && \
     "accelerate>=0.33" \
     "peft>=0.11" \
     "datasets>=2.20" \
-    evaluate rouge_score nltk bert_score \
+    evaluate rouge_score nltk bert_score pacy sacrebleu pycocoevalcap==1.2 bleu==0.3 \
     pillow sentencepiece "timm>=0.9" einops \
     qwen-vl-utils \
     flash-attn --no-build-isolation
 
-# (opcjonalnie) jeśli chcesz jeszcze evaluatory:
-# RUN pip install -U spacy sacrebleu pycocoevalcap==1.2 bleu==0.3 rouge-score
+COPY . /workspace/
 
-# nic nie kopiujemy — montuj repo/dane przez -v
 CMD ["/bin/bash"]
