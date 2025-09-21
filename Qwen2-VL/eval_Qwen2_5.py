@@ -1,18 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
-import sys
 import json
 import argparse
-import importlib.util
 from typing import List, Dict, Any, Optional, Tuple
 
 import torch
 from PIL import Image
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
-# ==== opcjonalne: peft (LoRA adapter przy inferencji) ====
 try:
     from peft import PeftModel
     _HAS_PEFT = True
@@ -20,9 +14,7 @@ except Exception:
     _HAS_PEFT = False
 
 
-# ---- Qwen-VL helper: process_vision_info (fallback gdy brak qwen_vl_utils) ----
 def _fallback_process_vision_info(messages: List[Dict[str, Any]]) -> Tuple[List[List[Image.Image]], Optional[List]]:
-    """Zwraca listę list obrazów (1 lista na wiadomość), brak wideo."""
     images_batch = []
     for m in messages:
         imgs = []
@@ -33,14 +25,11 @@ def _fallback_process_vision_info(messages: List[Dict[str, Any]]) -> Tuple[List[
     return images_batch, None
 
 try:
-    # jeśli masz zainstalowane qwen_vl_utils, użyjemy ich funkcji
     from qwen_vl_utils import process_vision_info as qwen_process_vision_info  # type: ignore
     _process_vision_info = qwen_process_vision_info
 except Exception:
     _process_vision_info = _fallback_process_vision_info
 
-
-# ---- wczytywanie compute_metrics.py (jeśli podano) + fallbacki ----
 def _load_compute_metrics(module_path: Optional[str]):
     """
     Oczekiwany podpis:
@@ -49,6 +38,7 @@ def _load_compute_metrics(module_path: Optional[str]):
     if module_path:
         module_path = os.path.abspath(module_path)
         if os.path.isfile(module_path):
+            import importlib.util
             spec = importlib.util.spec_from_file_location("compute_metrics", module_path)
             mod = importlib.util.module_from_spec(spec)
             assert spec and spec.loader
@@ -56,158 +46,71 @@ def _load_compute_metrics(module_path: Optional[str]):
             if hasattr(mod, "compute_metrics"):
                 return mod.compute_metrics  # type: ignore
 
-    # --- fallback: spróbuj sacrebleu + bert_score (jeśli są), w przeciwnym razie prosty BLEU-4 ---
     def _fallback_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
         out: Dict[str, float] = {}
-        # sacrebleu
         try:
             import sacrebleu
-            # sacrebleu oczekuje listy referencji jako listy list-stringów: [refset1, refset2, ...]
-            # przetworzymy refs (N x K) -> K list (po jednej na każdą ref-kolumnę), wyrównując brakujące
             max_k = max(len(r) for r in refs) if refs else 0
             ref_sets = []
             for k in range(max_k):
-                ref_sets.append([ (r[k] if k < len(r) else r[-1]) for r in refs ])
-            bleu = sacrebleu.corpus_bleu(preds, ref_sets)
-            out["BLEU"] = float(bleu.score)
-        except Exception:
-            # bardzo prosty, przybliżony BLEU-4 (bez smoothingu międzyzdaniowego)
-            try:
-                from collections import Counter
-                def ngrams(tokens, n):
-                    return [tuple(tokens[i:i+n]) for i in range(len(tokens)-n+1)]
-                def sent_bleu(p, rlist, n_max=4):
-                    import math
-                    ptoks = p.split()
-                    if not ptoks:
-                        return 0.0
-                    precisions = []
-                    for n in range(1, n_max+1):
-                        p_ngrams = Counter(ngrams(ptoks, n))
-                        if not p_ngrams:
-                            precisions.append(1e-9)
-                            continue
-                        max_matches = 0
-                        for r in rlist:
-                            rtoks = r.split()
-                            r_ngrams = Counter(ngrams(rtoks, n))
-                            matches = sum(min(c, r_ngrams[g]) for g, c in p_ngrams.items())
-                            max_matches = max(max_matches, matches)
-                        precisions.append((max_matches / max(1, sum(p_ngrams.values()))) or 1e-9)
-                    # geom. mean
-                    geom = 1.0
-                    for pr in precisions:
-                        geom *= pr
-                    geom = geom ** (1/len(precisions))
-                    # BP pomijamy (nie mamy długości ref „najbliższej”)
-                    return geom * 100.0
-                bleu_scores = [sent_bleu(p, r) for p, r in zip(preds, refs)]
-                out["BLEU"] = float(sum(bleu_scores) / max(1, len(bleu_scores)))
-            except Exception:
-                out["BLEU"] = 0.0
-
-        # BERTScore (multilingual, często dobrze działa dla PL)
-        try:
-            from bert_score import score as bert_score
-            # flatten refs do wyboru najlepszej referencji per przykład na podstawie F1 (przybliżenie)
-            # Tu bierzemy tylko pierwszą ref. Jeśli chcesz pełne macro z max po ref, rozbuduj w razie potrzeby.
-            first_refs = [r[0] if len(r) > 0 else "" for r in refs]
-            P, R, F1 = bert_score(preds, first_refs, lang="pl", rescale_with_baseline=True)
-            out["BERTScore_F1"] = float(F1.mean().item() * 100.0)
+                ref_sets.append([(r[k] if k < len(r) else r[-1]) for r in refs])
+            bleu = sacrebleu.corpus_bleu(preds, ref_sets, tokenize="intl")
+            out["SacreBLEU"] = float(bleu.score)
         except Exception:
             pass
-
-        # długość zdania
         try:
-            import numpy as np
-            out["Len_pred_tokens_avg"] = float(np.mean([len(p.split()) for p in preds]))  # type: ignore
+            from bert_score import score as bert_score
+            first_refs = [r[0] if len(r) > 0 else "" for r in refs]
+            _, _, F1 = bert_score(preds, first_refs, lang="pl", rescale_with_baseline=True)
+            out["BERTScore_F1"] = float(F1.mean().item())
         except Exception:
-            out["Len_pred_tokens_avg"] = sum(len(p.split()) for p in preds) / max(1, len(preds))
+            pass
+        out["Len_pred_tokens_avg"] = sum(len(p.split()) for p in preds) / max(1, len(preds))
         return out
 
     return _fallback_metrics
 
 
-# ---- IO: jsonl ----
-def read_jsonl(path: str) -> List[Dict[str, Any]]:
-    data = []
+def read_json(path: str) -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8") as f:
-        for ln in f:
-            ln = ln.strip()
-            if not ln:
-                continue
-            data.append(json.loads(ln))
-    return data
+        return json.load(f)
 
 
-def _extract_fields(
-    item: Dict[str, Any],
-    image_root: str,
-    default_img_dir: str
-) -> Tuple[str, List[str], str]:
-    sid = str(item.get("id") or item.get("image_id") or item.get("imgid") or item.get("filename") or item.get("file_name") or "")
+def _find_image_path(image_id: str, image_root: str, json_dir: str, exts: List[str]) -> Optional[str]:
+    candidates = []
+    for ext in exts:
+        if image_root:
+            candidates.append(os.path.join(image_root, f"{image_id}.{ext}"))
+        candidates.append(os.path.join(json_dir, "Images", f"{image_id}.{ext}"))
+        candidates.append(os.path.join(json_dir, f"{image_id}.{ext}"))
 
-    cand_img = (
-        item.get("image") or item.get("image_path") or item.get("filepath") or
-        item.get("file_path") or item.get("file") or item.get("filename") or item.get("file_name")
-    )
-    if not cand_img:
-        raise ValueError("Brak pola ze ścieżką do obrazu (np. 'image').")
-
-    if os.path.isabs(cand_img):
-        img_path = cand_img
-    else:
-        img_path = os.path.join(image_root if image_root else default_img_dir, cand_img)
-    img_path = os.path.abspath(img_path)
-
-    refs: List[str] = []
-    convs = item.get("conversations") or item.get("messages") or item.get("dialog")
-    if isinstance(convs, list):
-        for c in convs:
-            if not isinstance(c, dict):
-                continue
-            frm = str(c.get("from") or c.get("role") or "").lower()
-            if frm == "gpt" or frm == "assistant" or frm == "ai" or frm == "model":
-                val = c.get("value") or c.get("text") or c.get("content") or ""
-                if isinstance(val, list):
-                    parts = []
-                    for el in val:
-                        if isinstance(el, str):
-                            parts.append(el)
-                        elif isinstance(el, dict):
-                            parts.append(el.get("text") or el.get("value") or "")
-                    val = "\n".join(p for p in parts if p)
-                if not isinstance(val, str):
-                    continue
-                if val.startswith("<image>"):
-                    val = val.split("\n", 1)[1] if "\n" in val else ""
-                val = val.strip()
-                if val:
-                    refs.append(val)
-
-    refs = [str(r) for r in refs]
-
-    return img_path, refs, sid
+    for p in candidates:
+        p = os.path.abspath(p)
+        if os.path.isfile(p):
+            return p
+    return None
 
 
 def generate_caption_for_image(
     model,
     processor,
     image: Image.Image,
-    prompt: str,
+    system_prompt: str,
+    user_prompt: str,
     device: torch.device,
     max_new_tokens: int = 64,
     num_beams: int = 3,
     temperature: float = 0.0,
 ) -> str:
     messages = [
+        {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
         {
             "role": "user",
             "content": [
                 {"type": "image", "image": image},
-                {"type": "text", "text": prompt},
+                {"type": "text", "text": user_prompt},
             ],
-        }
+        },
     ]
     text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
     images, videos = _process_vision_info(messages)
@@ -223,40 +126,43 @@ def generate_caption_for_image(
             pad_token_id=processor.tokenizer.eos_token_id,
         )
 
-    # wytnij część wejściową
     input_len = inputs["input_ids"].shape[1]
     gen_ids = generated_ids[:, input_len:]
     out_text = processor.batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
-    # sprzątnij ewentualne sufiksy typu: "Assistant:" itp.
-    # (często Qwen kończy tokenem im_end, ale skip_special_tokens powinien go zdjąć)
     return out_text
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ewaluacja Qwen2.5-VL-7B-Instruct na zbiorze testowym (PL image captioning).")
+    parser = argparse.ArgumentParser(description="Ewaluacja Qwen2.5-VL-7B-Instruct na zbiorze testowym (JSON; PL image captioning).")
     parser.add_argument("--model_name_or_path", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct", help="HF model id lub ścieżka lokalna.")
-    parser.add_argument("--test_jsonl", type=str, required=True, help="Ścieżka do zbioru testowego .jsonl (np. flickr30kPolish_test.jsonl).")
-    parser.add_argument("--image_root", type=str, default="", help="Katalog bazowy dla względnych ścieżek obrazów (jeśli nie ten sam co test_jsonl).")
+    parser.add_argument("--json_path", type=str, required=True, help="Ścieżka do pliku JSON (lista {image_id, captions}).")
+    parser.add_argument("--image_root", type=str, default="", help="Katalog bazowy dla obrazów (opcjonalnie).")
+    parser.add_argument("--image_exts", type=str, default="jpg,jpeg,png", help="Lista rozszerzeń do sprawdzenia, po przecinkach.")
     parser.add_argument("--compute_metrics_py", type=str, default="", help="Ścieżka do compute_metrics.py (opcjonalne).")
     parser.add_argument("--peft_adapter_path", type=str, default="", help="Ścieżka do adaptera LoRA (opcjonalne).")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"], help="Urządzenie.")
-    parser.add_argument("--batch_size", type=int, default=1, help="(NIEUŻYWANE – generujemy per obraz dla stabilności Qwen-VL).")
-    parser.add_argument("--prompt", type=str, default="Opisz obraz jednym zdaniem po polsku.", help="Instrukcja dla modelu.")
     parser.add_argument("--max_new_tokens", type=int, default=64)
     parser.add_argument("--num_beams", type=int, default=3)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--output_predictions", type=str, default="predictions.jsonl", help="Plik wyników (predykcje).")
     parser.add_argument("--output_metrics", type=str, default="metrics.json", help="Plik metryk.")
+
+    parser.add_argument("--max_samples", type=int, default=0, help="Jeśli >0, użyj tylko pierwszych N rekordów.")
+    parser.add_argument("--sample_index", type=int, default=-1, help="Jeśli >=0, użyj tylko rekordu o tym indeksie (0-based).")
+
+    parser.add_argument("--system_prompt", type=str,
+                        default="Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji.")
+    parser.add_argument("--user_prompt", type=str,
+                        default="Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj.")
+
     args = parser.parse_args()
 
-    # device
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         device = torch.device(args.device)
 
-    # model + processor
-    torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+    torch_dtype = torch.bfloat16 if (torch.cuda.is_available() and device.type == "cuda") else torch.float32
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         args.model_name_or_path,
         torch_dtype=torch_dtype,
@@ -271,24 +177,30 @@ def main():
 
     processor = AutoProcessor.from_pretrained(args.model_name_or_path, trust_remote_code=True)
 
-    # wczytaj test jsonl
-    data = read_jsonl(args.test_jsonl)
-    default_img_dir = os.path.dirname(os.path.abspath(args.test_jsonl))
+    data = read_json(args.json_path)
+    json_dir = os.path.dirname(os.path.abspath(args.json_path))
+
+    if args.sample_index >= 0:
+        data = data[args.sample_index:args.sample_index + 1]
+    elif args.max_samples > 0:
+        data = data[:args.max_samples]
 
     predictions: List[str] = []
     references: List[List[str]] = []
     rows_out: List[Dict[str, Any]] = []
 
-    # loop po próbkach (per-image generacja)
+    exts = [x.strip().lstrip(".").lower() for x in args.image_exts.split(",") if x.strip()]
+    total = len(data)
     for idx, item in enumerate(data):
-        try:
-            img_path, refs, sid = _extract_fields(item, args.image_root, default_img_dir)
-        except Exception as e:
-            print(f"[{idx}] Błąd parsowania rekordu: {e}")
+        image_id = str(item.get("image_id", ""))
+        refs = [str(x).strip() for x in (item.get("captions") or []) if isinstance(x, str)]
+        if not image_id:
+            print(f"[{idx}] Brak image_id — pomijam.")
             continue
 
-        if not os.path.isfile(img_path):
-            print(f"[{idx}] Brak pliku obrazu: {img_path}")
+        img_path = _find_image_path(image_id=image_id, image_root=args.image_root, json_dir=json_dir, exts=exts)
+        if not img_path:
+            print(f"[{idx}] Nie znaleziono obrazu dla image_id={image_id} (szukano w {args.image_root or json_dir}).")
             continue
 
         try:
@@ -301,7 +213,8 @@ def main():
             model=model,
             processor=processor,
             image=image,
-            prompt=args.prompt,
+            system_prompt=args.system_prompt,
+            user_prompt=args.user_prompt,
             device=device,
             max_new_tokens=args.max_new_tokens,
             num_beams=args.num_beams,
@@ -309,16 +222,16 @@ def main():
         )
 
         predictions.append(pred)
-        references.append(refs)
+        references.append(refs if refs else [""])
         rows_out.append({
-            "id": sid if sid else str(idx),
+            "id": image_id,
             "image_path": img_path,
             "prediction": pred,
             "references": refs,
         })
 
-        if (idx + 1) % 50 == 0:
-            print(f"…przetworzono {idx+1}/{len(data)}")
+        if (idx + 1) % 50 == 0 or (idx + 1) == total:
+            print(f"…przetworzono {idx+1}/{total}")
 
     # zapisz predykcje
     with open(args.output_predictions, "w", encoding="utf-8") as f:
@@ -329,7 +242,7 @@ def main():
     # metryki
     metrics_fn = _load_compute_metrics(args.compute_metrics_py if args.compute_metrics_py else None)
     metrics = {}
-    if any(len(r) > 0 for r in references):
+    if any(len(r) > 0 and any(x.strip() for x in r) for r in references):
         metrics = metrics_fn(predictions, references)
     else:
         metrics = {"note": "Brak referencji w pliku testowym - metryki pominięte.", "N": len(predictions)}
@@ -339,9 +252,9 @@ def main():
     print(f"Zapisano metryki do: {os.path.abspath(args.output_metrics)}")
     print("== Wyniki skrót ==")
     for k, v in metrics.items():
-        if isinstance(v, (int, float)):
-            print(f"{k}: {v:.3f}")
-        else:
+        try:
+            print(f"{k}: {float(v):.3f}")
+        except Exception:
             print(f"{k}: {v}")
 
 
