@@ -10,13 +10,12 @@ try:
 except Exception:
     HAS_PEFT = False
 
-
 MODEL_NAME_OR_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
-JSON_PATH = "../shared/data/flickr30k/flick30k_captions_val.json"
+JSON_PATH = "../shared/data/flickr30k/flickr30kPolish_captions_test.json"
 IMAGE_ROOT = "../shared/data/flickr30k/Images"
 IMAGE_EXTS = "jpg,jpeg,png"
 COMPUTE_METRICS_PY = "../shared/compute_metrics.py"
-PEFT_ADAPTER_PATH = "../shared/peft_adapter"
+PEFT_ADAPTER_PATH = ""
 DEVICE = "auto"
 MAX_NEW_TOKENS = 64
 NUM_BEAMS = 3
@@ -27,7 +26,6 @@ MAX_SAMPLES = 0
 SAMPLE_INDEX = -1
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
 USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
-
 
 def fallback_process_vision_info(messages):
     images_batch = []
@@ -229,7 +227,6 @@ def main():
         json.dump(metrics, f, ensure_ascii=False, indent=2)
     print(os.path.abspath(OUTPUT_METRICS))
     print(json.dumps(metrics, ensure_ascii=False))
-
 
 if __name__ == "__main__":
     main()
