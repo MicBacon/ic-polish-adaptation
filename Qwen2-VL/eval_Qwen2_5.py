@@ -12,11 +12,11 @@ except Exception:
 
 
 MODEL_NAME_OR_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
-JSON_PATH = ""
-IMAGE_ROOT = ""
+JSON_PATH = "../shared/data/flickr30k/flick30k_captions_val.json"
+IMAGE_ROOT = "../shared/data/flickr30k/Images"
 IMAGE_EXTS = "jpg,jpeg,png"
-COMPUTE_METRICS_PY = ""
-PEFT_ADAPTER_PATH = ""
+COMPUTE_METRICS_PY = "../shared/compute_metrics.py"
+PEFT_ADAPTER_PATH = "../shared/peft_adapter"
 DEVICE = "auto"
 MAX_NEW_TOKENS = 64
 NUM_BEAMS = 3
