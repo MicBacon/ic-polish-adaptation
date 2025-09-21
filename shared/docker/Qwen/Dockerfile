@@ -18,7 +18,7 @@ RUN pip install -U pip setuptools wheel && \
     "accelerate>=0.33" \
     "peft>=0.11" \
     "datasets>=2.20" \
-    evaluate \
+    evaluate rouge_score nltk bert_score \
     pillow sentencepiece "timm>=0.9" einops \
     qwen-vl-utils \
     flash-attn --no-build-isolation
