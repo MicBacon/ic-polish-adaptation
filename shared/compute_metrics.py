@@ -206,8 +206,8 @@ def compute_metrics(predictions, references, image_paths_for_metrics):
     else:
         print("No image paths, skipping CLIPScore")
 
-    if "CLIPScore" in results and "CIDEr" in results:
-        clip_score = results["CLIPScore"]
+    if "CLIPScore_mean" in results and "CIDEr" in results:
+        clip_score = results["CLIPScore_mean"]
         cider_score = results["CIDEr"]
         
         # RefCLIPScore = (2 * CLIPScore * CIDEr) / (CLIPScore + CIDEr)
