@@ -233,7 +233,7 @@ def eval_clipscore_pl(image_paths, texts, clip_model_name="xlm-roberta-base-ViT-
         out["CLIPScore_std"] = float(np.std(scores_np))
 
     except Exception as e:
-        pass
+        print(e)
     return out
 
 def compute_metrics(predictions, references, image_paths_for_metrics):
@@ -246,7 +246,7 @@ def compute_metrics(predictions, references, image_paths_for_metrics):
         results.update(eval_clipscore(image_paths=image_paths_for_metrics, texts=preds))
     else:
         print("No image paths, skipping CLIPScore")
-        
+
     results.update(basic_lengths(preds))
     results["N_samples"] = float(len(preds))
     return results
