@@ -211,7 +211,7 @@ def main():
         lr_scheduler_type="cosine",
         warmup_ratio=WARMUP_RATIO,
         logging_steps=50,
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         save_strategy="steps",
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
