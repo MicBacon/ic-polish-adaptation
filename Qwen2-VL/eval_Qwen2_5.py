@@ -145,39 +145,51 @@ def _extract_fields(
     image_root: str,
     default_img_dir: str
 ) -> Tuple[str, List[str], str]:
-    """Zwraca (image_path, references[], sample_id). Obsługuje różne nazwy pól."""
-    # id
     sid = str(item.get("id") or item.get("image_id") or item.get("imgid") or item.get("filename") or item.get("file_name") or "")
 
-    # image path
     cand_img = (
         item.get("image") or item.get("image_path") or item.get("filepath") or
         item.get("file_path") or item.get("file") or item.get("filename") or item.get("file_name")
     )
     if not cand_img:
-        raise ValueError("Brak pola ze ścieżką do obrazu (np. 'image', 'image_path', 'file_name').")
-    # resolve path
+        raise ValueError("Brak pola ze ścieżką do obrazu (np. 'image').")
+
     if os.path.isabs(cand_img):
         img_path = cand_img
     else:
-        # najpierw image_root, potem folder pliku jsonl
         img_path = os.path.join(image_root if image_root else default_img_dir, cand_img)
     img_path = os.path.abspath(img_path)
 
-    # references
-    refs = item.get("references") or item.get("refs") or item.get("captions") or item.get("sentences") or item.get("gts") or item.get("ground_truth")
-    if isinstance(refs, str):
-        refs = [refs]
-    if not isinstance(refs, list) or not refs:
-        # dopuszczamy brak referencji — wtedy ewaluację metryczną pominiemy
-        refs = []
-    # upewnijmy się, że to lista str
+    refs: List[str] = []
+    convs = item.get("conversations") or item.get("messages") or item.get("dialog")
+    if isinstance(convs, list):
+        for c in convs:
+            if not isinstance(c, dict):
+                continue
+            frm = str(c.get("from") or c.get("role") or "").lower()
+            if frm == "gpt" or frm == "assistant" or frm == "ai" or frm == "model":
+                val = c.get("value") or c.get("text") or c.get("content") or ""
+                if isinstance(val, list):
+                    parts = []
+                    for el in val:
+                        if isinstance(el, str):
+                            parts.append(el)
+                        elif isinstance(el, dict):
+                            parts.append(el.get("text") or el.get("value") or "")
+                    val = "\n".join(p for p in parts if p)
+                if not isinstance(val, str):
+                    continue
+                if val.startswith("<image>"):
+                    val = val.split("\n", 1)[1] if "\n" in val else ""
+                val = val.strip()
+                if val:
+                    refs.append(val)
+
     refs = [str(r) for r in refs]
 
     return img_path, refs, sid
 
 
-# ---- Generacja podpisu z Qwen2.5-VL ----
 def generate_caption_for_image(
     model,
     processor,
