@@ -1,6 +1,9 @@
 # Unwanted big files and folders #
 ##################################
 mPLUG/output
+show-control-and-tell-master/demo/coco_entities_release.json
+mPLUG/nlg-eval
+mPLUG/nlg-eval/nlgeval/*.*
 shared/data/coco_object/*.json
 shared/data/coco_object/dataset_coco/
 shared/data/flickr30k/*.json
@@ -29,4 +32,3 @@ shared/data/flickr30k/dataset_flickr/
 .Trashes
 ehthumbs.db
 Thumbs.db
-show-control-and-tell-master/demo/coco_entities_release.json
