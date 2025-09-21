@@ -1,6 +1,8 @@
 from typing import List, Dict, Any, Tuple
 import math
 
+from pyparsing import Optional
+
 def _normalize_lists(predictions: List[str], references: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
     n = min(len(predictions), len(references))
     preds = [p.strip() if isinstance(p, str) else "" for p in predictions[:n]]
@@ -13,11 +15,6 @@ def _normalize_lists(predictions: List[str], references: List[List[str]]) -> Tup
     return preds, refs
 
 def _as_coco_dict(preds: List[str], refs: List[List[str]]) -> Tuple[Dict[Any, List[str]], Dict[Any, List[str]]]:
-    """
-    Format wymagany przez pycocoevalcap:
-      - gts: {id: [ref1, ref2, ...]}
-      - res: {id: [hyp]}
-    """
     gts, res = {}, {}
     for i, (p, rset) in enumerate(zip(preds, refs)):
         gts[i] = rset
@@ -27,21 +24,19 @@ def _as_coco_dict(preds: List[str], refs: List[List[str]]) -> Tuple[Dict[Any, Li
 def _eval_coco_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
     out: Dict[str, float] = {}
     try:
-        # BLEU
         try:
-            from pycocoevalcap.bleu.bleu import Bleu  # type: ignore
+            from pycocoevalcap.bleu.bleu import Bleu
             gts, res = _as_coco_dict(preds, refs)
             scorer = Bleu(n=4)
-            score, _ = scorer.compute_score(gts, res)  # score: list[4]
-            # Zwroty w stylu COCOEvalCap:
+            score, _ = scorer.compute_score(gts, res)
+
             for i, s in enumerate(score, start=1):
                 out[f"Bleu_{i}"] = float(s)
         except Exception:
             pass
 
-        # METEOR
         try:
-            from pycocoevalcap.meteor.meteor import Meteor  # type: ignore
+            from pycocoevalcap.meteor.meteor import Meteor  
             gts, res = _as_coco_dict(preds, refs)
             scorer = Meteor()
             score, _ = scorer.compute_score(gts, res)
@@ -49,9 +44,8 @@ def _eval_coco_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, flo
         except Exception:
             pass
 
-        # ROUGE_L
         try:
-            from pycocoevalcap.rouge.rouge import Rouge  # type: ignore
+            from pycocoevalcap.rouge.rouge import Rouge  
             gts, res = _as_coco_dict(preds, refs)
             scorer = Rouge()
             score, _ = scorer.compute_score(gts, res)
@@ -61,7 +55,7 @@ def _eval_coco_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, flo
 
         # CIDEr
         try:
-            from pycocoevalcap.cider.cider import Cider  # type: ignore
+            from pycocoevalcap.cider.cider import Cider  
             gts, res = _as_coco_dict(preds, refs)
             scorer = Cider()
             score, _ = scorer.compute_score(gts, res)
@@ -71,7 +65,7 @@ def _eval_coco_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, flo
 
         # SPICE (opcjonalnie; wymaga Java)
         try:
-            from pycocoevalcap.spice.spice import Spice  # type: ignore
+            from pycocoevalcap.spice.spice import Spice  
             gts, res = _as_coco_dict(preds, refs)
             scorer = Spice()
             score, _ = scorer.compute_score(gts, res)
@@ -93,19 +87,14 @@ def _eval_coco_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, flo
         except Exception:
             pass
     except Exception:
-        # Cały blok COCO nie powiódł się — zwracamy to, co mamy
         pass
     return out
 
 def _eval_sacrebleu(preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
-    """
-    SacreBLEU i chrF++ (skala 0..100). Tokenizacja 'intl' jest bezpieczna dla języków z diakrytykami.
-    """
     out: Dict[str, float] = {}
     try:
-        import sacrebleu  # type: ignore
+        import sacrebleu  
 
-        # Zbuduj ref_sets w układzie: [refset1, refset2, ...] gdzie każdy refset ma długość = N
         max_k = max(len(r) for r in refs) if refs else 0
         ref_sets = []
         for k in range(max_k):
@@ -120,9 +109,8 @@ def _eval_sacrebleu(preds: List[str], refs: List[List[str]]) -> Dict[str, float]
 
         # chrF++
         try:
-            # API v2: sacrebleu.metrics.chrf.CHRF
             try:
-                from sacrebleu.metrics import CHRF  # type: ignore
+                from sacrebleu.metrics import CHRF  
                 chrf = CHRF()
                 chrf_res = chrf.corpus_score(preds, ref_sets)
                 out["chrF++"] = float(chrf_res.score)
@@ -137,19 +125,14 @@ def _eval_sacrebleu(preds: List[str], refs: List[List[str]]) -> Dict[str, float]
     return out
 
 def _eval_bertscore(preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
-    """
-    BERTScore F1 (lang='pl'), best-of po wielu referencjach.
-    Zwraca średnią F1 (0..1).
-    """
     out: Dict[str, float] = {}
     try:
-        from bert_score import score as bert_score  # type: ignore
-        import numpy as np  # type: ignore
+        from bert_score import score as bert_score  
+        import numpy as np  
 
         if not preds:
             return out
 
-        # Przygotuj kolumny referencji (wyrównanie braków ostatnią dostępną)
         max_k = max(len(r) for r in refs) if refs else 0
         if max_k == 0:
             return out
@@ -172,7 +155,7 @@ def _eval_bertscore(preds: List[str], refs: List[List[str]]) -> Dict[str, float]
 
 def _basic_lengths(preds: List[str]) -> Dict[str, float]:
     try:
-        import numpy as np  # type: ignore
+        import numpy as np  
         lens = [len(p.split()) for p in preds]
         return {
             "Len_pred_tokens_avg": float(np.mean(lens)) if lens else 0.0,
@@ -187,27 +170,83 @@ def _basic_lengths(preds: List[str]) -> Dict[str, float]:
             "Len_pred_tokens_avg": float(avg),
             "Len_pred_tokens_std": float(math.sqrt(var)),
         }
+    
+def _eval_clipscore(
+    image_paths: List[str],
+    texts: List[str],
+    clip_model_name: str = "ViT-L-14",
+    clip_pretrained: str = "openai",
+    mclip_model: str = "M-CLIP/LABSE-Vit-L-14",
+    clip_bs: int = 16,
+) -> Dict[str, float]:
+    out: Dict[str, float] = {}
+    try:
+        import torch
+        import open_clip
+        import numpy as np
+        from sentence_transformers import SentenceTransformer
+        from PIL import Image
 
-def compute_metrics(predictions: List[str], references: List[List[str]]) -> Dict[str, float]:
-    """
-    Główna funkcja wołana przez skrypt ewaluacyjny.
-    """
+        if not image_paths or not texts:
+            return out
+        n = min(len(image_paths), len(texts))
+        image_paths = image_paths[:n]
+        texts = texts[:n]
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        model, _, preprocess = open_clip.create_model_and_transforms(
+            clip_model_name, pretrained=clip_pretrained, device=str(device)
+        )
+        model.eval()
+
+        mclip = SentenceTransformer(mclip_model, device=str(device))
+
+        img_feats = []
+        bs = max(1, int(clip_bs))
+        for i in range(0, n, bs):
+            batch_paths = image_paths[i:i+bs]
+            imgs = []
+            for p in batch_paths:
+                im = Image.open(p).convert("RGB")
+                imgs.append(preprocess(im))
+            imgs = torch.stack(imgs).to(device)
+            with torch.no_grad():
+                feats = model.encode_image(imgs)
+                feats = feats / feats.norm(dim=-1, keepdim=True)
+            img_feats.append(feats)
+        img_feats = torch.cat(img_feats, dim=0)
+
+        with torch.no_grad():
+            txt_feats = mclip.encode(texts, convert_to_tensor=True, device=str(device), normalize_embeddings=True)
+
+        sims = (img_feats * txt_feats).sum(dim=-1).clamp(min=0).detach().cpu().numpy()
+        scores = 100.0 * sims  # skala 0..100
+
+        out["CLIPScore_mean"] = float(np.mean(scores))
+        out["CLIPScore_std"] = float(np.std(scores))
+    except Exception as e:
+        pass
+    return out
+
+def compute_metrics(predictions: List[str], references: List[List[str]], image_paths_for_metrics: List[str]) -> Dict[str, float]:
     preds, refs = _normalize_lists(predictions, references)
 
     results: Dict[str, float] = {}
-    # COCO metrics (Bleu_1..4, METEOR, ROUGE_L, CIDEr, SPICE*)
+
     results.update(_eval_coco_metrics(preds, refs))
 
-    # SacreBLEU / chrF++
     results.update(_eval_sacrebleu(preds, refs))
 
-    # BERTScore (PL, best-of)
     results.update(_eval_bertscore(preds, refs))
 
-    # Długości (pomocnicze)
-    results.update(_basic_lengths(preds))
+    if image_paths_for_metrics:
+        results.update(_eval_clipscore(
+            image_paths=image_paths_for_metrics,
+            texts=preds
+        ))
 
-    # Informacyjnie: ile przykładów
+    results.update(_basic_lengths(preds))
     results["N_samples"] = float(len(preds))
 
     return results

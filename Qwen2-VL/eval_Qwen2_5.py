@@ -25,16 +25,12 @@ def _fallback_process_vision_info(messages: List[Dict[str, Any]]) -> Tuple[List[
     return images_batch, None
 
 try:
-    from qwen_vl_utils import process_vision_info as qwen_process_vision_info  # type: ignore
+    from qwen_vl_utils import process_vision_info as qwen_process_vision_info
     _process_vision_info = qwen_process_vision_info
 except Exception:
     _process_vision_info = _fallback_process_vision_info
 
 def _load_compute_metrics(module_path: Optional[str]):
-    """
-    Oczekiwany podpis:
-        compute_metrics(predictions: List[str], references: List[List[str]]) -> Dict[str, float]
-    """
     if module_path:
         module_path = os.path.abspath(module_path)
         if os.path.isfile(module_path):
@@ -42,9 +38,9 @@ def _load_compute_metrics(module_path: Optional[str]):
             spec = importlib.util.spec_from_file_location("compute_metrics", module_path)
             mod = importlib.util.module_from_spec(spec)
             assert spec and spec.loader
-            spec.loader.exec_module(mod)  # type: ignore
+            spec.loader.exec_module(mod)
             if hasattr(mod, "compute_metrics"):
-                return mod.compute_metrics  # type: ignore
+                return mod.compute_metrics
 
     def _fallback_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
         out: Dict[str, float] = {}
@@ -188,6 +184,7 @@ def main():
     predictions: List[str] = []
     references: List[List[str]] = []
     rows_out: List[Dict[str, Any]] = []
+    image_paths_for_metrics: List[str] = []
 
     exts = [x.strip().lstrip(".").lower() for x in args.image_exts.split(",") if x.strip()]
     total = len(data)
@@ -202,7 +199,7 @@ def main():
         if not img_path:
             print(f"[{idx}] Nie znaleziono obrazu dla image_id={image_id} (szukano w {args.image_root or json_dir}).")
             continue
-
+        image_paths_for_metrics.append(img_path)
         try:
             image = Image.open(img_path).convert("RGB")
         except Exception as e:
@@ -243,7 +240,10 @@ def main():
     metrics_fn = _load_compute_metrics(args.compute_metrics_py if args.compute_metrics_py else None)
     metrics = {}
     if any(len(r) > 0 and any(x.strip() for x in r) for r in references):
-        metrics = metrics_fn(predictions, references)
+        metrics = metrics_fn(
+            predictions, references,
+            image_paths=image_paths_for_metrics
+        )
     else:
         metrics = {"note": "Brak referencji w pliku testowym - metryki pominięte.", "N": len(predictions)}
 
