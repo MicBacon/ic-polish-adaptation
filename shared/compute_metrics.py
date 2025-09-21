@@ -137,47 +137,6 @@ def basic_lengths(preds):
             "Len_pred_tokens_std": float(math.sqrt(var)),
         }
 
-def eval_clipscore(image_paths, texts, clip_model_name="ViT-L-14", clip_pretrained="openai", mclip_model="M-CLIP/LaBSE-Vit-L-14", clip_bs=16):
-    out = {}
-    try:
-        import torch
-        import open_clip
-        import numpy as np
-        from sentence_transformers import SentenceTransformer
-        from PIL import Image
-        if not image_paths or not texts:
-            return out
-        n = min(len(image_paths), len(texts))
-        image_paths = image_paths[:n]
-        texts = texts[:n]
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model, _, preprocess = open_clip.create_model_and_transforms(clip_model_name, pretrained=clip_pretrained, device=str(device))
-        model.eval()
-        mclip = SentenceTransformer(mclip_model, device=str(device))
-        img_feats = []
-        bs = max(1, int(clip_bs))
-        for i in range(0, n, bs):
-            batch_paths = image_paths[i:i+bs]
-            imgs = []
-            for p in batch_paths:
-                im = Image.open(p).convert("RGB")
-                imgs.append(preprocess(im))
-            imgs = torch.stack(imgs).to(device)
-            with torch.no_grad():
-                feats = model.encode_image(imgs)
-                feats = feats / feats.norm(dim=-1, keepdim=True)
-            img_feats.append(feats)
-        img_feats = torch.cat(img_feats, dim=0)
-        with torch.no_grad():
-            txt_feats = mclip.encode(texts, convert_to_tensor=True, device=str(device), normalize_embeddings=True)
-        sims = (img_feats * txt_feats).sum(dim=-1).clamp(min=0).detach().cpu().numpy()
-        scores = 100.0 * sims
-        out["CLIPScore_mean"] = float(np.mean(scores))
-        out["CLIPScore_std"] = float(np.std(scores))
-    except Exception:
-        pass
-    return out
-
 def eval_clipscore_pl(image_paths, texts, clip_model_name="xlm-roberta-base-ViT-B-32", clip_pretrained="laion5b_s13b_b90k", clip_bs=16):
     out = {}
     try:
@@ -243,7 +202,7 @@ def compute_metrics(predictions, references, image_paths_for_metrics):
     results.update(eval_sacrebleu(preds, refs))
     results.update(eval_bertscore(preds, refs))
     if image_paths_for_metrics:
-        results.update(eval_clipscore(image_paths=image_paths_for_metrics, texts=preds))
+        results.update(eval_clipscore_pl(image_paths=image_paths_for_metrics, texts=preds))
     else:
         print("No image paths, skipping CLIPScore")
 
