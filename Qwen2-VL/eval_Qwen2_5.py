@@ -1,49 +1,68 @@
 import os
 import json
-import argparse
-from typing import List, Dict, Any, Optional, Tuple
-
-import torch
 from PIL import Image
+import torch
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
 try:
     from peft import PeftModel
-    _HAS_PEFT = True
+    HAS_PEFT = True
 except Exception:
-    _HAS_PEFT = False
+    HAS_PEFT = False
 
 
-def _fallback_process_vision_info(messages: List[Dict[str, Any]]) -> Tuple[List[List[Image.Image]], Optional[List]]:
+MODEL_NAME_OR_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
+JSON_PATH = ""
+IMAGE_ROOT = ""
+IMAGE_EXTS = "jpg,jpeg,png"
+COMPUTE_METRICS_PY = ""
+PEFT_ADAPTER_PATH = ""
+DEVICE = "auto"
+MAX_NEW_TOKENS = 64
+NUM_BEAMS = 3
+TEMPERATURE = 0.0
+OUTPUT_PREDICTIONS = "predictions.jsonl"
+OUTPUT_METRICS = "metrics.json"
+MAX_SAMPLES = 0
+SAMPLE_INDEX = -1
+SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
+USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
+
+
+def fallback_process_vision_info(messages):
     images_batch = []
     for m in messages:
         imgs = []
         for c in m.get("content", []):
             if c.get("type") == "image":
                 imgs.append(c["image"])
-        images_batch.append(imgs if imgs else [Image.new("RGB", (1, 1), color=(0, 0, 0))])
+        if imgs:
+            images_batch.append(imgs)
+        else:
+            images_batch.append([Image.new("RGB", (1, 1), color=(0, 0, 0))])
     return images_batch, None
 
-try:
-    from qwen_vl_utils import process_vision_info as qwen_process_vision_info
-    _process_vision_info = qwen_process_vision_info
-except Exception:
-    _process_vision_info = _fallback_process_vision_info
 
-def _load_compute_metrics(module_path: Optional[str]):
+try:
+    from qwen_vl_utils import process_vision_info as process_vision_info
+except Exception:
+    process_vision_info = fallback_process_vision_info
+
+
+def load_compute_metrics(module_path):
     if module_path:
-        module_path = os.path.abspath(module_path)
-        if os.path.isfile(module_path):
+        path = os.path.abspath(module_path)
+        if os.path.isfile(path):
             import importlib.util
-            spec = importlib.util.spec_from_file_location("compute_metrics", module_path)
+            spec = importlib.util.spec_from_file_location("compute_metrics", path)
             mod = importlib.util.module_from_spec(spec)
             assert spec and spec.loader
             spec.loader.exec_module(mod)
             if hasattr(mod, "compute_metrics"):
                 return mod.compute_metrics
 
-    def _fallback_metrics(preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
-        out: Dict[str, float] = {}
+    def fallback_metrics(preds, refs, image_paths=None):
+        out = {}
         try:
             import sacrebleu
             max_k = max(len(r) for r in refs) if refs else 0
@@ -64,22 +83,21 @@ def _load_compute_metrics(module_path: Optional[str]):
         out["Len_pred_tokens_avg"] = sum(len(p.split()) for p in preds) / max(1, len(preds))
         return out
 
-    return _fallback_metrics
+    return fallback_metrics
 
 
-def read_json(path: str) -> List[Dict[str, Any]]:
+def read_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _find_image_path(image_id: str, image_root: str, json_dir: str, exts: List[str]) -> Optional[str]:
+def find_image_path(image_id, image_root, json_dir, exts):
     candidates = []
     for ext in exts:
         if image_root:
             candidates.append(os.path.join(image_root, f"{image_id}.{ext}"))
         candidates.append(os.path.join(json_dir, "Images", f"{image_id}.{ext}"))
         candidates.append(os.path.join(json_dir, f"{image_id}.{ext}"))
-
     for p in candidates:
         p = os.path.abspath(p)
         if os.path.isfile(p):
@@ -90,26 +108,20 @@ def _find_image_path(image_id: str, image_root: str, json_dir: str, exts: List[s
 def generate_caption_for_image(
     model,
     processor,
-    image: Image.Image,
-    system_prompt: str,
-    user_prompt: str,
-    device: torch.device,
-    max_new_tokens: int = 64,
-    num_beams: int = 3,
-    temperature: float = 0.0,
-) -> str:
+    image,
+    system_prompt,
+    user_prompt,
+    device,
+    max_new_tokens=64,
+    num_beams=3,
+    temperature=0.0,
+):
     messages = [
         {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
-        {
-            "role": "user",
-            "content": [
-                {"type": "image", "image": image},
-                {"type": "text", "text": user_prompt},
-            ],
-        },
+        {"role": "user", "content": [{"type": "image", "image": image}, {"type": "text", "text": user_prompt}]},
     ]
     text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
-    images, videos = _process_vision_info(messages)
+    images, videos = process_vision_info(messages)
     inputs = processor(text=[text], images=images, videos=videos, return_tensors="pt").to(device)
 
     with torch.no_grad():
@@ -117,8 +129,8 @@ def generate_caption_for_image(
             **inputs,
             max_new_tokens=max_new_tokens,
             do_sample=(temperature > 0.0),
-            temperature=temperature if temperature > 0.0 else None,
-            num_beams=num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1,
+            temperature=(temperature if temperature > 0.0 else None),
+            num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
             pad_token_id=processor.tokenizer.eos_token_id,
         )
 
@@ -129,132 +141,94 @@ def generate_caption_for_image(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ewaluacja Qwen2.5-VL-7B-Instruct na zbiorze testowym (JSON; PL image captioning).")
-    parser.add_argument("--model_name_or_path", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct", help="HF model id lub ścieżka lokalna.")
-    parser.add_argument("--json_path", type=str, required=True, help="Ścieżka do pliku JSON (lista {image_id, captions}).")
-    parser.add_argument("--image_root", type=str, default="", help="Katalog bazowy dla obrazów (opcjonalnie).")
-    parser.add_argument("--image_exts", type=str, default="jpg,jpeg,png", help="Lista rozszerzeń do sprawdzenia, po przecinkach.")
-    parser.add_argument("--compute_metrics_py", type=str, default="", help="Ścieżka do compute_metrics.py (opcjonalne).")
-    parser.add_argument("--peft_adapter_path", type=str, default="", help="Ścieżka do adaptera LoRA (opcjonalne).")
-    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"], help="Urządzenie.")
-    parser.add_argument("--max_new_tokens", type=int, default=64)
-    parser.add_argument("--num_beams", type=int, default=3)
-    parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--output_predictions", type=str, default="predictions.jsonl", help="Plik wyników (predykcje).")
-    parser.add_argument("--output_metrics", type=str, default="metrics.json", help="Plik metryk.")
+    if not JSON_PATH:
+        return
 
-    parser.add_argument("--max_samples", type=int, default=0, help="Jeśli >0, użyj tylko pierwszych N rekordów.")
-    parser.add_argument("--sample_index", type=int, default=-1, help="Jeśli >=0, użyj tylko rekordu o tym indeksie (0-based).")
-
-    parser.add_argument("--system_prompt", type=str,
-                        default="Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji.")
-    parser.add_argument("--user_prompt", type=str,
-                        default="Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj.")
-
-    args = parser.parse_args()
-
-    if args.device == "auto":
+    if DEVICE == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
-        device = torch.device(args.device)
+        device = torch.device(DEVICE)
 
     torch_dtype = torch.bfloat16 if (torch.cuda.is_available() and device.type == "cuda") else torch.float32
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        args.model_name_or_path,
+        MODEL_NAME_OR_PATH,
         torch_dtype=torch_dtype,
         device_map="auto" if device.type == "cuda" else None,
     )
-    if args.peft_adapter_path:
-        if not _HAS_PEFT:
-            print("[WARN] Podano --peft_adapter_path, ale pakiet 'peft' nie jest dostępny. Ignoruję adapter.")
-        else:
-            model = PeftModel.from_pretrained(model, args.peft_adapter_path)
+
+    if PEFT_ADAPTER_PATH:
+        if HAS_PEFT:
+            model = PeftModel.from_pretrained(model, PEFT_ADAPTER_PATH)
             model.eval()
 
-    processor = AutoProcessor.from_pretrained(args.model_name_or_path, trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(MODEL_NAME_OR_PATH, trust_remote_code=True)
 
-    data = read_json(args.json_path)
-    json_dir = os.path.dirname(os.path.abspath(args.json_path))
+    data = read_json(JSON_PATH)
+    json_dir = os.path.dirname(os.path.abspath(JSON_PATH))
 
-    if args.sample_index >= 0:
-        data = data[args.sample_index:args.sample_index + 1]
-    elif args.max_samples > 0:
-        data = data[:args.max_samples]
+    if SAMPLE_INDEX >= 0:
+        data = data[SAMPLE_INDEX:SAMPLE_INDEX + 1]
+    elif MAX_SAMPLES > 0:
+        data = data[:MAX_SAMPLES]
 
-    predictions: List[str] = []
-    references: List[List[str]] = []
-    rows_out: List[Dict[str, Any]] = []
-    image_paths_for_metrics: List[str] = []
+    predictions = []
+    references = []
+    rows_out = []
+    image_paths_for_metrics = []
 
-    exts = [x.strip().lstrip(".").lower() for x in args.image_exts.split(",") if x.strip()]
+    exts = [x.strip().lstrip(".").lower() for x in IMAGE_EXTS.split(",") if x.strip()]
     total = len(data)
+
     for idx, item in enumerate(data):
         image_id = str(item.get("image_id", ""))
         refs = [str(x).strip() for x in (item.get("captions") or []) if isinstance(x, str)]
         if not image_id:
-            print(f"[{idx}] Brak image_id — pomijam.")
             continue
 
-        img_path = _find_image_path(image_id=image_id, image_root=args.image_root, json_dir=json_dir, exts=exts)
+        img_path = find_image_path(image_id=image_id, image_root=IMAGE_ROOT, json_dir=json_dir, exts=exts)
         if not img_path:
-            print(f"[{idx}] Nie znaleziono obrazu dla image_id={image_id} (szukano w {args.image_root or json_dir}).")
             continue
+
         image_paths_for_metrics.append(img_path)
         try:
             image = Image.open(img_path).convert("RGB")
-        except Exception as e:
-            print(f"[{idx}] Nie można otworzyć obrazu {img_path}: {e}")
+        except Exception:
             continue
 
         pred = generate_caption_for_image(
             model=model,
             processor=processor,
             image=image,
-            system_prompt=args.system_prompt,
-            user_prompt=args.user_prompt,
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=USER_PROMPT,
             device=device,
-            max_new_tokens=args.max_new_tokens,
-            num_beams=args.num_beams,
-            temperature=args.temperature,
+            max_new_tokens=MAX_NEW_TOKENS,
+            num_beams=NUM_BEAMS,
+            temperature=TEMPERATURE,
         )
 
         predictions.append(pred)
         references.append(refs if refs else [""])
-        rows_out.append({
-            "id": image_id,
-            "image_path": img_path,
-            "prediction": pred,
-            "references": refs,
-        })
+        rows_out.append({"id": image_id, "image_path": img_path, "prediction": pred, "references": refs})
 
         if (idx + 1) % 50 == 0 or (idx + 1) == total:
-            print(f"…przetworzono {idx+1}/{total}")
+            print(f"{idx+1}/{total}")
 
-    # zapisz predykcje
-    with open(args.output_predictions, "w", encoding="utf-8") as f:
+    with open(OUTPUT_PREDICTIONS, "w", encoding="utf-8") as f:
         for row in rows_out:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    print(f"Zapisano predykcje do: {os.path.abspath(args.output_predictions)}")
+    print(os.path.abspath(OUTPUT_PREDICTIONS))
 
-    # metryki
-    metrics_fn = _load_compute_metrics(args.compute_metrics_py if args.compute_metrics_py else None)
-    metrics = {}
+    metrics_fn = load_compute_metrics(COMPUTE_METRICS_PY if COMPUTE_METRICS_PY else None)
     if any(len(r) > 0 and any(x.strip() for x in r) for r in references):
-        metrics = metrics_fn(
-            predictions, references, image_paths_for_metrics
-        )
+        metrics = metrics_fn(predictions, references, image_paths_for_metrics)
     else:
-        metrics = {"note": "Brak referencji w pliku testowym - metryki pominięte.", "N": len(predictions)}
+        metrics = {"note": "no_refs", "N": len(predictions)}
 
-    with open(args.output_metrics, "w", encoding="utf-8") as f:
+    with open(OUTPUT_METRICS, "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
-    print(f"Zapisano metryki do: {os.path.abspath(args.output_metrics)}")
-    print("== Wyniki skrót ==")
-    for k, v in metrics.items():
-        try:
-            print(f"{k}: {float(v):.3f}")
-        except Exception:
-            print(f"{k}: {v}")
+    print(os.path.abspath(OUTPUT_METRICS))
+    print(json.dumps(metrics, ensure_ascii=False))
 
 
 if __name__ == "__main__":
