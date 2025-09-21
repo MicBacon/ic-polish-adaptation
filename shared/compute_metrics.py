@@ -90,17 +90,6 @@ def eval_sacrebleu(preds, refs):
             out["SacreBLEU"] = float(bleu.score)
         except Exception:
             pass
-        try:
-            try:
-                from sacrebleu.metrics import CHRF
-                chrf = CHRF()
-                chrf_res = chrf.corpus_score(preds, ref_sets)
-                out["chrF++"] = float(chrf_res.score)
-            except Exception:
-                chrf_res = sacrebleu.corpus_chrf(preds, ref_sets)
-                out["chrF++"] = float(chrf_res.score)
-        except Exception:
-            pass
     except Exception:
         pass
     return out
