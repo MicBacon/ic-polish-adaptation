@@ -1,5 +1,6 @@
 import json
 import argparse
+import os
 import evaluate
 import numpy as np
 from dataclasses import dataclass
@@ -40,7 +41,7 @@ class CaptionJsonlDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.samples[idx]
-        image_path = ex["image"]
+        image_path = os.path.join('/Users/michalboczon/dev/Magisterka/ic-polish-adaptation/shared/data/flickr30k/Images', ex["image"])
         conv = ex["conversations"]
         assert isinstance(conv, list) and len(conv) >= 2, "conversations must be [human, gpt]"
 
