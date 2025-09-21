@@ -18,7 +18,7 @@ def as_coco_dict(preds, refs):
         res[i] = [p]
     return gts, res
 
-def eval_coco_metrics(preds, refs):
+def eval_coco_metrics(preds, refs, img_paths):
     out = {}
     try:
         try:
@@ -178,14 +178,75 @@ def eval_clipscore(image_paths, texts, clip_model_name="ViT-L-14", clip_pretrain
         pass
     return out
 
+def eval_clipscore_pl(image_paths, texts, clip_model_name="xlm-roberta-base-ViT-B-32", clip_pretrained="laion5b_s13b_b90k", clip_bs=16):
+    out = {}
+    try:
+        import torch
+        import open_clip
+        import numpy as np
+        from PIL import Image
+
+        if not image_paths or not texts:
+            return out
+
+        n = min(len(image_paths), len(texts))
+        image_paths = image_paths[:n]
+        texts = texts[:n]
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        model, _, preprocess = open_clip.create_model_and_transforms(
+            clip_model_name, 
+            pretrained=clip_pretrained, 
+            device=device
+        )
+        model.eval()
+
+        prompt = "Na zdjęciu widać " # polski ekwiwalent "A photo of" luźno przetłumaczony przeze mnie 
+        prompted_texts = [prompt + text for text in texts]
+
+        img_feats = []
+        bs = clip_bs
+        for i in range(0, n, bs):
+            batch_paths = image_paths[i:i+bs]
+            imgs = []
+            for p in batch_paths:
+                im = Image.open(p).convert("RGB")
+                imgs.append(preprocess(im))
+            imgs = torch.stack(imgs).to(device)
+            with torch.no_grad():
+                feats = model.encode_image(imgs)
+                feats = feats / feats.norm(dim=-1, keepdim=True)
+            img_feats.append(feats)
+        img_feats = torch.cat(img_feats, dim=0)
+
+        text_tokens = open_clip.tokenize(prompted_texts).to(device)
+        with torch.no_grad():
+            txt_feats = model.encode_text(text_tokens)
+            txt_feats = txt_feats / txt_feats.norm(dim=-1, keepdim=True)
+
+        sims = (img_feats * txt_feats).sum(dim=-1).clamp(min=0)
+        scores = 100.0 * sims
+
+        scores_np = scores.detach().cpu().numpy()
+        out["CLIPScore_mean"] = float(np.mean(scores_np))
+        out["CLIPScore_std"] = float(np.std(scores_np))
+
+    except Exception as e:
+        pass
+    return out
+
 def compute_metrics(predictions, references, image_paths_for_metrics):
     preds, refs = normalize_lists(predictions, references)
     results = {}
-    results.update(eval_coco_metrics(preds, refs))
+    results.update(eval_coco_metrics(preds, refs, image_paths_for_metrics))
     results.update(eval_sacrebleu(preds, refs))
     results.update(eval_bertscore(preds, refs))
     if image_paths_for_metrics:
         results.update(eval_clipscore(image_paths=image_paths_for_metrics, texts=preds))
+    else:
+        print("No image paths, skipping CLIPScore")
+        
     results.update(basic_lengths(preds))
     results["N_samples"] = float(len(preds))
     return results
