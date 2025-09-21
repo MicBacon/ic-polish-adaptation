@@ -1,7 +1,5 @@
 import json
 import argparse
-import os
-import evaluate
 import numpy as np
 from dataclasses import dataclass
 from typing import Dict, List, Any
@@ -10,7 +8,7 @@ import torch
 from torch.utils.data import Dataset
 
 from transformers import (AutoProcessor, AutoConfig,
-                          TrainingArguments, Trainer)
+                          TrainingArguments, Trainer, EarlyStoppingCallback)
 from transformers import Qwen2_5_VLForConditionalGeneration
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
@@ -28,7 +26,7 @@ def read_jsonl(path: str) -> List[Dict[str, Any]]:
             ln = ln.strip()
             if not ln:
                 continue
-            data.append(json.loads(ln))
+            data.append(json.loads(ln)) 
     return data
 
 
@@ -41,7 +39,7 @@ class CaptionJsonlDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.samples[idx]
-        image_path = os.path.join('/Users/michalboczon/dev/Magisterka/ic-polish-adaptation/shared/data/flickr30k/Images', ex["image"])
+        image_path = ex["image"]
         conv = ex["conversations"]
         assert isinstance(conv, list) and len(conv) >= 2, "conversations must be [human, gpt]"
 
@@ -80,7 +78,6 @@ class DataCollatorQwenVL:
       3) Creates labels identical to input_ids, but masks (=-100) all user tokens.
     """
     processor: AutoProcessor
-    device: torch.device
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         # Build texts and gather vision inputs
@@ -120,7 +117,6 @@ class DataCollatorQwenVL:
         proc_out = self.processor(
             text=texts,
             images=images,
-            videos=videos,
             padding=True,
             return_tensors="pt",
         )
@@ -152,19 +148,18 @@ class DataCollatorQwenVL:
             labels[i, :prompt_len] = -100
 
         batch_out = {
-            "input_ids": input_ids.to(self.device),
-            "labels": labels.to(self.device),
-            "attention_mask": attention_mask.to(self.device),
+           "input_ids": input_ids,
+           "labels": labels,
+           "attention_mask": attention_mask,
         }
-        # Vision tensors (pixel_values, etc.) are already inside proc_out and on CPU;
-        # move all remaining processor outputs to device:
+       # Dołącz pozostałe tensory z processora (CPU).
         for k, v in proc_out.items():
             if k in batch_out:
                 continue
             if isinstance(v, torch.Tensor):
-                batch_out[k] = v.to(self.device)
-        return batch_out
+               batch_out[k] = v
 
+        return batch_out
 
 def main():
     ap = argparse.ArgumentParser()
@@ -175,7 +170,7 @@ def main():
     ap.add_argument("--out_dir", type=str, required=True)
     ap.add_argument("--epochs", type=int, default=1)  # smoke test default
     ap.add_argument("--per_device_train_batch_size", type=int, default=8)
-    ap.add_argument("--per_device_eval_batch_size", type=int, default=8)
+    ap.add_argument("--per_device_eval_batch_size", type=int, default=2)
     ap.add_argument("--grad_accum", type=int, default=8)
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--warmup_ratio", type=float, default=0.05)
@@ -203,7 +198,7 @@ def main():
         args.model_name, **model_kwargs
     )
 
-    processor = AutoProcessor.from_pretrained(args.model_name)
+    processor = AutoProcessor.from_pretrained(args.model_name, use_fast=False, min_pixels=256*28*28, max_pixels=896*28*28)
 
     # LoRA (no 4-bit here; H100 has plenty of VRAM)
     lora_cfg = LoraConfig(
@@ -217,12 +212,13 @@ def main():
     # Prepare and wrap
     model = get_peft_model(model, lora_cfg)
     model.print_trainable_parameters()
+    model.enable_input_require_grads()
 
     # Datasets
     train_ds = CaptionJsonlDataset(args.train_file)
     val_ds = CaptionJsonlDataset(args.val_file)
 
-    data_collator = DataCollatorQwenVL(processor=processor, device=device)
+    data_collator = DataCollatorQwenVL(processor=processor)
 
     # Training args
     training_args = TrainingArguments(
@@ -235,7 +231,11 @@ def main():
         lr_scheduler_type="cosine",
         warmup_ratio=args.warmup_ratio,
         logging_steps=50,
-        evaluation_strategy="steps",
+        eval_strategy="steps",
+        save_strategy="steps",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
         eval_steps=args.eval_steps,
         save_steps=args.save_steps,
         save_total_limit=2,
@@ -245,46 +245,13 @@ def main():
         remove_unused_columns=False,  # IMPORTANT for multimodal batches
         report_to="none",
         max_grad_norm=1.0,
+        prediction_loss_only=True,
+        eval_accumulation_steps=2,
+        include_inputs_for_metrics=False
     )
-
-    # prepare metrics
-    bleu = evaluate.load("bleu")
-    cider = evaluate.load("cider")
-    rouge = evaluate.load("rouge") #rouge_raw
-    meteor = evaluate.load("meteor")
-    spice = evaluate.load("spice")
-    bertscore = evaluate.load("bertscore")
-    clipscore = evaluate.load("clip_score")
-
-    # Simple metrics: we log eval loss; (optional) can add CIDEr later.
-    def compute_metrics(_eval_pred):
-        processor = AutoProcessor.from_pretrained("your-model-checkpoint")
-        predictions, labels = _eval_pred
-        # Decode predictions and labels
-        decoded_preds = processor.batch_decode(predictions, skip_special_tokens=True)
-        decoded_labels = processor.batch_decode(labels, skip_special_tokens=True)
-        
-        # Prepare references for metrics (e.g., CIDEr and SPICE may require list of lists)
-        references = [[label] for label in decoded_labels]  # For metrics expecting list of references per prediction
-        
-        # Compute metrics
-        bleu_results = bleu.compute(predictions=decoded_preds, references=references)
-        meteor_results = meteor.compute(predictions=decoded_preds, references=decoded_labels)
-        rouge_results = rouge.compute(predictions=decoded_preds, references=decoded_labels)
-        cider_results = cider.compute(predictions=decoded_preds, references=references)
-        spice_results = spice.compute(predictions=decoded_preds, references=references)
-        bertscore_results = bertscore.compute(predictions=decoded_preds, references=decoded_labels)
-        clipscore_results = clipscore.compute(predictions=decoded_preds, references=decoded_labels, model_type="ViT-L-14/openai")
-
-        return {
-            "bleu": bleu_results["bleu"],
-            "meteor": meteor_results["meteor"],
-            "rougeL": rouge_results["rougeL"],
-            "cider": cider_results["cider"],
-            "spice": spice_results["spice"],
-            "bertscore": bertscore_results["bertscore"],
-            "clipscore": clipscore_results["clipscore"],
-        }
+    
+    model.gradient_checkpointing_enable()
+    model.config.use_cache = False # pomimo tego warning: `use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`...
 
     trainer = Trainer(
         model=model,
@@ -292,7 +259,8 @@ def main():
         train_dataset=train_ds,
         eval_dataset=val_ds,
         data_collator=data_collator,
-        compute_metrics=compute_metrics,
+        compute_metrics=None,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=1)]
     )
 
     print("[INFO] Starting training...")
