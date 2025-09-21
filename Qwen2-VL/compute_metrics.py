@@ -176,7 +176,7 @@ def _eval_clipscore(
     texts: List[str],
     clip_model_name: str = "ViT-L-14",
     clip_pretrained: str = "openai",
-    mclip_model: str = "M-CLIP/LABSE-Vit-L-14",
+    mclip_model: str = "M-CLIP/LaBSE-Vit-L-14",
     clip_bs: int = 16,
 ) -> Dict[str, float]:
     out: Dict[str, float] = {}
@@ -221,7 +221,7 @@ def _eval_clipscore(
             txt_feats = mclip.encode(texts, convert_to_tensor=True, device=str(device), normalize_embeddings=True)
 
         sims = (img_feats * txt_feats).sum(dim=-1).clamp(min=0).detach().cpu().numpy()
-        scores = 100.0 * sims  # skala 0..100
+        scores = 100.0 * sims
 
         out["CLIPScore_mean"] = float(np.mean(scores))
         out["CLIPScore_std"] = float(np.std(scores))
@@ -233,11 +233,8 @@ def compute_metrics(predictions: List[str], references: List[List[str]], image_p
     preds, refs = _normalize_lists(predictions, references)
 
     results: Dict[str, float] = {}
-
     results.update(_eval_coco_metrics(preds, refs))
-
     results.update(_eval_sacrebleu(preds, refs))
-
     results.update(_eval_bertscore(preds, refs))
 
     if image_paths_for_metrics:
