@@ -27,6 +27,8 @@ from dataset import create_dataset, create_sampler, create_loader, coco_collate_
 from scheduler import create_scheduler
 from optim import create_optimizer, create_two_optimizer
 
+import wandb
+
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, do_amp=False,
           do_two_optim=False, do_accum=False, accum_steps=1):
@@ -269,44 +271,62 @@ def main(args, config):
         model_without_ddp = model.module
 
     print("Start training")
-    start_time = time.time()
-    vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
-    result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch10')
-    if utils.is_main_process():
-        result = cal_metric(result_file)
-    #dist.barrier()
-    for epoch in range(start_epoch, max_epoch):
-        if epoch > 0:
-            lr_scheduler.step(epoch + warmup_steps)
 
-            
-        if not args.evaluate:
-            if args.distributed:
-                train_loader.sampler.set_epoch(epoch)
+    run = wandb.init(
+        project="magisterka",
+        config={                       
+            "learning_rate": args.lr,
+            "epochs": max_epoch
+        },
+    )
 
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler,
-                                config, do_amp=args.do_amp, do_two_optim=args.do_two_optim, accum_steps=args.accum_steps)
-
-        if args.evaluate:
-            break
-
+    with wandb.init(project=project, config=config) as run:
+        wandb.run.name = 'mPLUG-flickr30k-eng-finetune'
+        wandb.run.save()
+        start_time = time.time()
         vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
-        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_%s_epoch%d' % (args.dataset, epoch))
+        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch10')
         if utils.is_main_process():
             result = cal_metric(result_file)
-            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                         'epoch': epoch,
-                         }
-            with open(os.path.join(args.output_dir, "log.txt"), "a") as f:
-                f.write(json.dumps(log_stats) + "\n")
+        #dist.barrier()
+        for epoch in range(start_epoch, max_epoch):
+            if epoch > 0:
+                lr_scheduler.step(epoch + warmup_steps)
 
-            torch.save({
-                'model': model_without_ddp.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict(),
-                'config': config,
-                'epoch': epoch,
-            }, os.path.join(args.output_dir, 'checkpoint_%02d.pth' % epoch))
+                
+            if not args.evaluate:
+                if args.distributed:
+                    train_loader.sampler.set_epoch(epoch)
+
+                train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler,
+                                    config, do_amp=args.do_amp, do_two_optim=args.do_two_optim, accum_steps=args.accum_steps)
+
+            if args.evaluate:
+                break
+
+            vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
+            result_file = save_result(vqa_result, args.result_dir, 'vqa_result_%s_epoch%d' % (args.dataset, epoch))
+            if utils.is_main_process():
+                result = cal_metric(result_file)
+                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                            'epoch': epoch,
+                            }
+                
+                run.log({**{f'train_{k}': float(v) for k, v in train_stats.items()},
+                            'epoch': epoch,
+                            **{f'val_{k}': float(v) for k, v in result.items()},
+                            })
+                
+                with open(os.path.join(args.output_dir, "log.txt"), "a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
+
+                torch.save({
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'config': config,
+                    'epoch': epoch,
+                }, os.path.join(args.output_dir, 'checkpoint_%02d.pth' % epoch))
 
         #dist.barrier()
 

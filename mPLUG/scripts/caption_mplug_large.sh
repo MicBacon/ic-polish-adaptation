@@ -11,7 +11,7 @@ do
     python caption_mplug.py \
     --config ./configs/caption_mplug_large.yaml \
     --output_dir output/coco_caption_large \
-    --checkpoint ./output/coco_caption_large/checkpoint_04.pth \
+    --checkpoint ./output/coco_caption_large/mplug_large_v2.pth \
     --do_two_optim \
     --lr $lr \
     --min_length 8 \
