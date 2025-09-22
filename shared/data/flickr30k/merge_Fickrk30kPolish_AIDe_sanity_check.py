@@ -29,3 +29,7 @@ with open("captions.csv", "r") as f:
 
 aide_images = set(item["Picture_orig_name"].split("_")[0] for item in data_AIDe)
 print(len(aide_images))
+
+overall_flickr30k_size = csv.reader(open("descriptions_flickr30k_translated.csv", "r"), delimiter='|')
+flickr_images = set(row[0] for row in overall_flickr30k_size)
+print(len(flickr_images))
