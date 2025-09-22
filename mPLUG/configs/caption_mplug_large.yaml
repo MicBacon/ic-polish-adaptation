@@ -1,10 +1,10 @@
-#train_file: ["../shared/data/flickr30k/flickr30k_captions_train.json"]
-#val_file: ["../shared/data/flickr30k/flickr30k_captions_val.json"]
-#test_file: ["../shared/data/flickr30k/flickr30k_captions_test.json"]
+train_file: ["../shared/data/flickr30k/flickr30k_captions_train.json"]
+val_file: ["../shared/data/flickr30k/flickr30k_captions_val.json"]
+test_file: ["../shared/data/flickr30k/flickr30k_captions_test.json"]
 
-train_file: ["../shared/data/coco_object/coco_caption_train_ocr.json"]
-val_file: ["../shared/data/coco_object/coco_caption_test_ocr.json"]
-test_file: ["../shared/data/coco_object/coco_caption_test_ocr.json"]
+#train_file: ["../shared/data/coco_object/coco_caption_train_ocr.json"]
+#val_file: ["../shared/data/coco_object/coco_caption_test_ocr.json"]
+#test_file: ["../shared/data/coco_object/coco_caption_test_ocr.json"]
 
 read_local_data: True
 
