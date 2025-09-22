@@ -80,6 +80,7 @@ class ICMetricsCallback(TrainerCallback):
         preds, refs, imgs = do_eval_generate(model, self.p, ds, self.refs)
         m = self.fn(preds, refs, imgs)
         logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
+        logs["eval_callback_ping"] = 1.0
         self._trainer.log(logs)
         try:
             wandb.log(logs, step=state.global_step)
@@ -323,7 +324,7 @@ def main():
         save_strategy="steps",
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
-        greater_is_better=True,
+        greater_is_better=False,
         eval_steps=EVAL_STEPS,
         save_steps=SAVE_STEPS,
         save_total_limit=2,
