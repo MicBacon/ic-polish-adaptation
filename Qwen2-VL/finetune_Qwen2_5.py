@@ -2,7 +2,7 @@ import os
 import json
 import torch
 from torch.utils.data import Dataset
-from transformers import AutoProcessor, TrainingArguments, Trainer, EarlyStoppingCallback
+from transformers import AutoProcessor, TrainingArguments, Trainer, EarlyStoppingCallback, TrainerCallback
 from transformers import Qwen2_5_VLForConditionalGeneration
 from peft import LoraConfig, get_peft_model
 import wandb
@@ -33,6 +33,10 @@ TEMPERATURE = 0.0
 EVAL_REFS_JSON = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"        
 COMPUTE_METRICS_PY = "../shared/compute_metrics.py"
 
+# logowanie metryk 
+VAL_EVAL_N = 0
+WANDB_LOG_SAMPLES = 4
+
 os.environ["WANDB_PROJECT"] = "magisterka"
 os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
@@ -53,6 +57,32 @@ def read_json(path):
 def image_id_from_path(p):
     b = os.path.basename(p)
     return os.path.splitext(b)[0]
+
+class ICMetricsCallback(TrainerCallback):
+    def __init__(self, processor, val_ds, refs_map, metrics_fn, n_samples=0, log_samples=0):
+        self.p = processor
+        self.ds = val_ds
+        self.refs = refs_map
+        self.fn = metrics_fn
+        self.n = n_samples
+        self.log_samples = log_samples
+    def on_evaluate(self, args, state, control, **kwargs):
+        model = kwargs["model"].eval()
+        if self.n and self.n > 0:
+            ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))]
+        else:
+            ds = self.ds
+        preds, refs, imgs = do_eval_generate(model, self.p, ds, self.refs)
+        m = self.fn(preds, refs, imgs)
+        logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
+        kwargs["trainer"].log(logs)
+        wandb.log(logs, step=state.global_step)
+        if self.log_samples and self.log_samples > 0:
+            table = wandb.Table(columns=["image","pred","ref"])
+            for i in range(min(self.log_samples, len(preds))):
+                table.add_data(wandb.Image(imgs[i]), preds[i], refs[i][0] if refs[i] else "")
+            wandb.log({"eval_samples": table}, step=state.global_step)
+            
 
 class CaptionJsonlDataset(Dataset):
     def __init__(self, jsonl_path):
@@ -185,13 +215,27 @@ def do_eval_generate(model, processor, ds, refs_map):
 def main():
     if not TRAIN_FILE or not VAL_FILE:
         return
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+
     model_kwargs = {"torch_dtype": dtype, "device_map": "auto"}
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
+
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_NAME, **model_kwargs)
     processor = AutoProcessor.from_pretrained(MODEL_NAME, use_fast=False)
+
+    refs_map = {}
+    if EVAL_REFS_JSON:
+        raw = read_json(EVAL_REFS_JSON)
+        if isinstance(raw, dict):
+            refs_map = raw
+        elif isinstance(raw, list):
+            for rec in raw:
+                k = str(rec.get("image_id", ""))
+                rs = rec.get("captions") or rec.get("references") or []
+                if k:
+                    refs_map[k] = rs
+
     lora_cfg = LoraConfig(
         r=16,
         lora_alpha=32,
@@ -200,6 +244,7 @@ def main():
         bias="none",
         task_type="CAUSAL_LM",
     )
+
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
     train_ds = CaptionJsonlDataset(TRAIN_FILE)
@@ -218,7 +263,7 @@ def main():
         eval_strategy="steps",
         save_strategy="steps",
         load_best_model_at_end=True,
-        metric_for_best_model="eval_loss",
+        metric_for_best_model="eval_BERTScore_F1",
         greater_is_better=False,
         eval_steps=EVAL_STEPS,
         save_steps=SAVE_STEPS,
@@ -235,8 +280,10 @@ def main():
         log_level="error",
         report_to="wandb",
         run_name="qwen2.5-vl-finetune",)
+    
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
+
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -244,29 +291,22 @@ def main():
         eval_dataset=val_ds,
         data_collator=data_collator,
         compute_metrics=None,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=1)],
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3),
+                   ICMetricsCallback(processor, val_ds, refs_map, metrics_fn, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)],
     )
 
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
+
     print(OUT_DIR)
-    refs_map = {}
-    if EVAL_REFS_JSON:
-        raw = read_json(EVAL_REFS_JSON)
-        if isinstance(raw, dict):
-            refs_map = raw
-        elif isinstance(raw, list):
-            for rec in raw:
-                k = str(rec.get("image_id", ""))
-                rs = rec.get("captions") or rec.get("references") or []
-                if k:
-                    refs_map[k] = rs
+
     model.eval()
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map)
     metrics_fn = load_compute_metrics(COMPUTE_METRICS_PY if COMPUTE_METRICS_PY else "")
     metrics = metrics_fn(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
+
     with open(mpath, "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
     print(mpath)
