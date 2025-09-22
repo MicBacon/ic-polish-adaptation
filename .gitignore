@@ -12,6 +12,7 @@ shared/data/flickr30k/*.csv
 shared/data/flickr30k/*.txt
 shared/data/flickr30k/Images/
 shared/data/flickr30k/dataset_flickr/
+Service/.gradio/
 
 # Unwanted ungrouped extensions #
 #################################
