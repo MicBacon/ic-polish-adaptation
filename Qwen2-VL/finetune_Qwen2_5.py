@@ -66,8 +66,9 @@ class ICMetricsCallback(TrainerCallback):
         self.fn = metrics_fn
         self.n = n_samples
         self.log_samples = log_samples
+
     def on_evaluate(self, args, state, control, **kwargs):
-        model = kwargs["model"].eval()
+        model = self.trainer.model.eval()
         if self.n and self.n > 0:
             ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))]
         else:
@@ -75,14 +76,33 @@ class ICMetricsCallback(TrainerCallback):
         preds, refs, imgs = do_eval_generate(model, self.p, ds, self.refs)
         m = self.fn(preds, refs, imgs)
         logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
-        kwargs["trainer"].log(logs)
+        self.trainer.log(logs)
         wandb.log(logs, step=state.global_step)
         if self.log_samples and self.log_samples > 0:
             table = wandb.Table(columns=["image","pred","ref"])
             for i in range(min(self.log_samples, len(preds))):
                 table.add_data(wandb.Image(imgs[i]), preds[i], refs[i][0] if refs[i] else "")
             wandb.log({"eval_samples": table}, step=state.global_step)
-            
+        return control
+    
+class EarlyStopByMetric(TrainerCallback):
+    def __init__(self, metric_name, greater_is_better=True, patience=3, save_best_dir=None):
+        self.m = metric_name; self.g = greater_is_better; self.p = patience
+        self.best = None; self.wait = 0; self.save_best_dir = save_best_dir
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if not logs or self.m not in logs: return control
+        v = logs[self.m]
+        improved = (self.best is None) or (v > self.best if self.g else v < self.best)
+        if improved:
+            self.best = v; self.wait = 0
+            if self.save_best_dir:
+                os.makedirs(self.save_best_dir, exist_ok=True)
+                self.trainer.save_model(self.save_best_dir)
+        else:
+            self.wait += 1
+            if self.wait >= self.p:
+                control.should_training_stop = True
+        return control
 
 class CaptionJsonlDataset(Dataset):
     def __init__(self, jsonl_path):
@@ -221,7 +241,7 @@ def main():
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
 
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_NAME, **model_kwargs)
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_NAME, dtype=dtype, **model_kwargs)
     processor = AutoProcessor.from_pretrained(MODEL_NAME, use_fast=False)
 
     refs_map = {}
@@ -265,7 +285,7 @@ def main():
         save_strategy="steps",
         load_best_model_at_end=True,
         metric_for_best_model="eval_BERTScore_F1",
-        greater_is_better=False,
+        greater_is_better=True,
         eval_steps=EVAL_STEPS,
         save_steps=SAVE_STEPS,
         save_total_limit=2,
@@ -292,8 +312,10 @@ def main():
         eval_dataset=val_ds,
         data_collator=data_collator,
         compute_metrics=None,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=3),
-                   ICMetricsCallback(processor, val_ds, refs_map, metrics_fn, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)],
+        callbacks=[
+            ICMetricsCallback(processor, val_ds, refs_map, metrics_fn, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES),
+            EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True, patience=3, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
+        ]
     )
 
     trainer.train()
