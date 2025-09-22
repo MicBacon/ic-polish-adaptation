@@ -235,8 +235,7 @@ def main():
         disable_tqdm=True,
         log_level="error",
         report_to="wandb",
-        logging_steps=1,
-    )
+        run_name="qwen2.5-vl-finetune",)
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
     trainer = Trainer(
