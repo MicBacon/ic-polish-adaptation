@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 from transformers import AutoProcessor, TrainingArguments, Trainer, EarlyStoppingCallback
 from transformers import Qwen2_5_VLForConditionalGeneration
 from peft import LoraConfig, get_peft_model
+import wandb
 
 try:
     from qwen_vl_utils import process_vision_info as qwen_process_vision_info
@@ -15,7 +16,7 @@ MODEL_NAME = "Qwen/Qwen2.5-VL-7B-Instruct"
 TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_train.jsonl"
 VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_val.jsonl"
 OUT_DIR = "out"
-EPOCHS = 1
+EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 2
 GRAD_ACCUM = 8
@@ -31,6 +32,9 @@ NUM_BEAMS = 3
 TEMPERATURE = 0.0
 EVAL_REFS_JSON = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"        
 COMPUTE_METRICS_PY = "../shared/compute_metrics.py"
+
+os.environ["WANDB_PROJECT"] = "magisterka"
+os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
 def read_jsonl(path):
     out = []
@@ -230,6 +234,8 @@ def main():
         include_inputs_for_metrics=False,
         disable_tqdm=True,
         log_level="error",
+        report_to="wandb",
+        logging_steps=1,
     )
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
@@ -242,6 +248,7 @@ def main():
         compute_metrics=None,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=1)],
     )
+
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)

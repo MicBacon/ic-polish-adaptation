@@ -25,7 +25,7 @@ RUN pip install -U pip setuptools wheel && \
     "datasets>=2.20" \
     evaluate rouge_score nltk bert_score sacrebleu \
     "pycocoevalcap==1.2" \
-    open_clip_torch sentence-transformers \
+    open_clip_torch sentence-transformers wandb \
     pillow sentencepiece "timm>=0.9" einops \
     qwen-vl-utils hf-transfer && \
     pip install flash-attn --no-build-isolation
