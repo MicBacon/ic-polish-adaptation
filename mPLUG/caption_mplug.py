@@ -282,7 +282,6 @@ def main(args, config):
 
     with wandb.init(project=run.project, config=run.config) as run:
         wandb.run.name = 'mPLUG-flickr30k-eng-finetune'
-        wandb.run.save()
         start_time = time.time()
         vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
         result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch10')
