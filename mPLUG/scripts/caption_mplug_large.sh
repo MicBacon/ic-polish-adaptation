@@ -11,13 +11,16 @@ do
     python caption_mplug.py \
     --config ./configs/caption_mplug_large.yaml \
     --output_dir output/coco_caption_large \
-    --checkpoint ./mplug_large_v2.pth \
+    --checkpoint mplug_large_v2.pth \
     --do_two_optim \
     --lr $lr \
     --min_length 8 \
     --max_length 25 \
     --max_input_length 25 \
-    --device mps \
+    --device cuda \
     --dataset flickr30k
+    #--evaluate
+    #--device mps \
+    #--dataset flickr30k
     #--evaluate \
 done
