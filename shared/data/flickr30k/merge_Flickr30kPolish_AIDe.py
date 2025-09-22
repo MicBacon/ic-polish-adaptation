@@ -51,9 +51,11 @@ if flickrPolishOk and aideOk:
     random.shuffle(data_AIDe)
 
     # 1000 images annotated
-    train_set_AIDe = data_AIDe[:800]
-    val_set_AIDe = data_AIDe[800:900]
-    test_set_AIDe = data_AIDe[900:]
+    aide_images_matching_flickr = [item for item in data_AIDe if item["Picture_orig_name"].split("_")[0] in flickr_polish_images]
+    train_set_AIDe = aide_images_matching_flickr[:800]
+    rest_AIDe = [item for item in data_AIDe if item["Picture_orig_name"] not in [x["Picture_orig_name"] for x in train_set_AIDe]]
+    val_set_AIDe = rest_AIDe[:100]
+    test_set_AIDe = rest_AIDe[100:]
 
     random.shuffle(data_Flickr)
 
