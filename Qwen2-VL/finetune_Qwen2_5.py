@@ -254,7 +254,7 @@ def main():
         return
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 
-    model_kwargs = {"torch_dtype": dtype, "device_map": "auto"}
+    model_kwargs = {"device_map": "auto"}
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
 
@@ -301,7 +301,7 @@ def main():
         eval_strategy="steps",
         save_strategy="steps",
         load_best_model_at_end=True,
-        metric_for_best_model="eval_BERTScore_F1",
+        metric_for_best_model="eval_loss",
         greater_is_better=True,
         eval_steps=EVAL_STEPS,
         save_steps=SAVE_STEPS,
