@@ -97,7 +97,7 @@ if flickrPolishOk and aideOk:
 
             if img_id.__str__() not in [item["Picture_orig_name"].split("_")[0] for item in val_set_AIDe] and img_id.__str__() not in [item["Picture_orig_name"].split("_")[0] for item in test_set_AIDe]:
                 json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
-            dest.write(",\n")
+                dest.write(",\n")
 
         #delete comma from last item
         dest.seek(dest.tell() - 2, os.SEEK_SET)
