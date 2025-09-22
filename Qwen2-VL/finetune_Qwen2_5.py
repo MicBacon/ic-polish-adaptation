@@ -235,6 +235,7 @@ def main():
                 rs = rec.get("captions") or rec.get("references") or []
                 if k:
                     refs_map[k] = rs
+    metrics_fn = load_compute_metrics(COMPUTE_METRICS_PY if COMPUTE_METRICS_PY else "")
 
     lora_cfg = LoraConfig(
         r=16,
@@ -303,7 +304,6 @@ def main():
 
     model.eval()
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map)
-    metrics_fn = load_compute_metrics(COMPUTE_METRICS_PY if COMPUTE_METRICS_PY else "")
     metrics = metrics_fn(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
 
