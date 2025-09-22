@@ -280,7 +280,7 @@ def main(args, config):
         },
     )
 
-    with wandb.init(project=project, config=config) as run:
+    with wandb.init(project=run.project, config=run.config) as run:
         wandb.run.name = 'mPLUG-flickr30k-eng-finetune'
         wandb.run.save()
         start_time = time.time()
