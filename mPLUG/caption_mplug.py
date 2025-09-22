@@ -272,7 +272,7 @@ def main(args, config):
 
     print("Start training")
 
-    project_wb = "my-awesome-project"
+    project_wb = "magisterka"
 
     config_wb = {
         'epochs' : max_epoch,
@@ -282,7 +282,6 @@ def main(args, config):
         'model' : 'mPLUG',
         'notes' : 'flickr30k caption finetune with mPLUG'
     }
-
 
     with wandb.init(project=project_wb, config=config_wb) as run:
         run.name = 'mPLUG-flickr30k-eng-finetune'
