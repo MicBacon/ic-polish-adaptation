@@ -272,16 +272,20 @@ def main(args, config):
 
     print("Start training")
 
-    run = wandb.init(
-        project="magisterka",
-        config={                       
-            "learning_rate": args.lr,
-            "epochs": max_epoch
-        },
-    )
+    project_wb = "my-awesome-project"
 
-    with wandb.init(project=run.project, config=run.config) as run:
-        wandb.run.name = 'mPLUG-flickr30k-eng-finetune'
+    config_wb = {
+        'epochs' : max_epoch,
+        'lr' : args.lr,
+        'batch_size' : config['batch_size_train'],
+        'dataset' : args.dataset,
+        'model' : 'mPLUG',
+        'notes' : 'flickr30k caption finetune with mPLUG'
+    }
+
+
+    with wandb.init(project=project_wb, config=config_wb) as run:
+        run.name = 'mPLUG-flickr30k-eng-finetune'
         start_time = time.time()
         vqa_result = evaluation(model, test_loader, tokenizer, device, config, args.dataset)
         result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch10')
