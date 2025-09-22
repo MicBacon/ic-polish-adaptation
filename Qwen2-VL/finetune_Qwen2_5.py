@@ -15,6 +15,7 @@ except Exception:
 MODEL_NAME = "Qwen/Qwen2.5-VL-7B-Instruct"
 TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_train.jsonl"
 VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_val.jsonl"
+IMAGE_ROOT = "/workspace/shared/data/flickr30k" 
 OUT_DIR = "out"
 EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
@@ -122,13 +123,33 @@ class EarlyStopByMetric(TrainerCallback):
         return control
 
 class CaptionJsonlDataset(Dataset):
-    def __init__(self, jsonl_path):
+    def __init__(self, jsonl_path, image_root=""):
         self.samples = read_jsonl(jsonl_path)
+        self.json_dir = os.path.dirname(os.path.abspath(jsonl_path))
+        self.image_root = image_root
+
+    def _resolve(self, p):
+        p = str(p).strip()
+        if os.path.isabs(p) and os.path.isfile(p):
+            return p
+        cand = []
+        if self.image_root:
+            cand.append(os.path.join(self.image_root, p.lstrip("./")))
+            cand.append(os.path.join(self.image_root, "Images", os.path.basename(p)))
+        cand.append(os.path.join(self.json_dir, p))
+        cand.append(os.path.join(self.json_dir, "Images", os.path.basename(p)))
+        for c in cand:
+            if os.path.isfile(c):
+                return os.path.abspath(c)
+        return os.path.abspath(p)
+
     def __len__(self):
         return len(self.samples)
+
     def __getitem__(self, idx):
         ex = self.samples[idx]
-        image_path = ex["image"]
+        raw_path = ex["image"]
+        image_path = self._resolve(raw_path)
         conv = ex["conversations"]
         asst_text = conv[1]["value"]
         messages = [
@@ -285,8 +306,8 @@ def main():
 
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
-    train_ds = CaptionJsonlDataset(TRAIN_FILE)
-    val_ds = CaptionJsonlDataset(VAL_FILE)
+    train_ds = CaptionJsonlDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
+    val_ds   = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
     data_collator = DataCollatorQwenVL(processor=processor)
     training_args = TrainingArguments(
         output_dir=OUT_DIR,
