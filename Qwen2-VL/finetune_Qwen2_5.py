@@ -310,6 +310,12 @@ def main():
     train_ds = CaptionJsonlDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
     val_ds   = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
     data_collator = DataCollatorQwenVL(processor=processor)
+
+    ic_cb = ICMetricsCallback(processor, val_ds, refs_map, metrics_fn,
+                          n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)
+    es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
+                          patience=3, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
+
     training_args = TrainingArguments(
         output_dir=OUT_DIR,
         num_train_epochs=EPOCHS,
@@ -351,12 +357,13 @@ def main():
         eval_dataset=val_ds,
         data_collator=data_collator,
         compute_metrics=None,
-        callbacks=[
-            ICMetricsCallback(processor, val_ds, refs_map, metrics_fn, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES),
-            EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True, patience=3, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
-        ]
+        callbacks=[ic_cb, es_cb]
     )
 
+    ic_cb.set_trainer(trainer)
+    es_cb.set_trainer(trainer)
+
+    trainer.evaluate()
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
