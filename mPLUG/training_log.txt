@@ -1,0 +1,571 @@
+eval on flickr30k (after 5 epochs of training)
+sh scripts/caption_mplug_large.sh
+Requirement already satisfied: colorlog in /usr/local/lib/python3.9/dist-packages (6.9.0)
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Hit:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64  InRelease
+Get:2 http://security.ubuntu.com/ubuntu focal-security InRelease [128 kB]
+Hit:3 http://archive.ubuntu.com/ubuntu focal InRelease   
+Get:4 http://archive.ubuntu.com/ubuntu focal-updates InRelease [128 kB]
+Get:5 http://archive.ubuntu.com/ubuntu focal-backports InRelease [128 kB]
+Fetched 383 kB in 1s (403 kB/s)  
+Reading package lists... Done
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+default-jdk is already the newest version (2:1.11-72).
+0 upgraded, 0 newly installed, 0 to remove and 67 not upgraded.
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+default-jre is already the newest version (2:1.11-72).
+0 upgraded, 0 newly installed, 0 to remove and 67 not upgraded.
+Obtaining file:///workspace/main/mPLUG/language-evaluation
+  Preparing metadata (setup.py) ... done
+Requirement already satisfied: absl-py in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (2.3.1)
+Requirement already satisfied: colorlog in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (6.9.0)
+Requirement already satisfied: matplotlib in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (3.9.4)
+Requirement already satisfied: more_itertools in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (10.7.0)
+Requirement already satisfied: nltk in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (3.9.1)
+Requirement already satisfied: numpy in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (2.0.2)
+Requirement already satisfied: scikit-image in /usr/local/lib/python3.9/dist-packages (from language-evaluation==0.1.0) (0.24.0)
+Requirement already satisfied: six in /usr/lib/python3/dist-packages (from language-evaluation==0.1.0) (1.14.0)
+Requirement already satisfied: contourpy>=1.0.1 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (1.3.0)
+Requirement already satisfied: cycler>=0.10 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (4.59.1)
+Requirement already satisfied: kiwisolver>=1.3.1 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (1.4.7)
+Requirement already satisfied: packaging>=20.0 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (25.0)
+Requirement already satisfied: pillow>=8 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (11.3.0)
+Requirement already satisfied: pyparsing>=2.3.1 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (3.2.3)
+Requirement already satisfied: python-dateutil>=2.7 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (2.9.0.post0)
+Requirement already satisfied: importlib-resources>=3.2.0 in /usr/local/lib/python3.9/dist-packages (from matplotlib->language-evaluation==0.1.0) (6.5.2)
+Requirement already satisfied: zipp>=3.1.0 in /usr/local/lib/python3.9/dist-packages (from importlib-resources>=3.2.0->matplotlib->language-evaluation==0.1.0) (3.23.0)
+Requirement already satisfied: click in /usr/local/lib/python3.9/dist-packages (from nltk->language-evaluation==0.1.0) (8.1.8)
+Requirement already satisfied: joblib in /usr/local/lib/python3.9/dist-packages (from nltk->language-evaluation==0.1.0) (1.5.1)
+Requirement already satisfied: regex>=2021.8.3 in /usr/local/lib/python3.9/dist-packages (from nltk->language-evaluation==0.1.0) (2025.7.34)
+Requirement already satisfied: tqdm in /usr/local/lib/python3.9/dist-packages (from nltk->language-evaluation==0.1.0) (4.67.1)
+Requirement already satisfied: scipy>=1.9 in /usr/local/lib/python3.9/dist-packages (from scikit-image->language-evaluation==0.1.0) (1.13.1)
+Requirement already satisfied: networkx>=2.8 in /usr/local/lib/python3.9/dist-packages (from scikit-image->language-evaluation==0.1.0) (3.2.1)
+Requirement already satisfied: imageio>=2.33 in /usr/local/lib/python3.9/dist-packages (from scikit-image->language-evaluation==0.1.0) (2.37.0)
+Requirement already satisfied: tifffile>=2022.8.12 in /usr/local/lib/python3.9/dist-packages (from scikit-image->language-evaluation==0.1.0) (2024.8.30)
+Requirement already satisfied: lazy-loader>=0.4 in /usr/local/lib/python3.9/dist-packages (from scikit-image->language-evaluation==0.1.0) (0.4)
+Installing collected packages: language-evaluation
+  Attempting uninstall: language-evaluation
+    Found existing installation: language-evaluation 0.1.0
+    Can't uninstall 'language-evaluation'. No files were found to uninstall.
+  DEPRECATION: Legacy editable install of language-evaluation==0.1.0 from file:///workspace/main/mPLUG/language-evaluation (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, try using --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for language-evaluation
+Successfully installed language-evaluation
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+$/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/stanford-corenlp-3.6.0.jar already exists
+/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/meteor/data/paraphrase-en.gz already exists
+Not using distributed mode
+Creating vqa datasets
+/usr/local/lib/python3.9/dist-packages/huggingface_hub/file_download.py:945: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Creating model
+/usr/local/lib/python3.9/dist-packages/transformers/configuration_utils.py:369: UserWarning: Passing `gradient_checkpointing` to a config initialization is deprecated and will be removed in v5 Transformers. Using `model.gradient_checkpointing_enable()` instead, or if you are using the `Trainer` API, pass `gradient_checkpointing=True` in your `TrainingArguments`.
+  warnings.warn(
+use_checkpoint:  True
+load checkpoint from ./output/coco_caption_large/checkpoint_04.pth
+<All keys matched successfully>
+Start training
+/usr/local/lib/python3.9/dist-packages/torch/_dynamo/eval_frame.py:929: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/usr/local/lib/python3.9/dist-packages/torch/utils/checkpoint.py:85: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+Generate VQA test result:  [ 0/60]  eta: 0:09:18    time: 9.3016  data: 2.3006  max mem: 5934
+Generate VQA test result:  [50/60]  eta: 0:00:48    time: 4.7695  data: 0.0002  max mem: 5934
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.5856  data: 0.0002  max mem: 5934
+Generate VQA test result: Total time: 0:04:49 (4.8272 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_epoch10.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 4.320 s
+3783 {'Bleu_1': 0.7950988240159985, 'Bleu_2': 0.622843224247996, 'Bleu_3': 0.4739488820463802, 'Bleu_4': 0.3556579056447606, 'METEOR': 0.25566197881746305, 'ROUGE_L': np.float64(0.5467636958703712), 'CIDEr': np.float64(0.8263992740024529), 'SPICE': np.float64(0.1895434636649664)}
+Training time 0:05:05
+
+
+SECOND training from 5th epoch to 10th epoch LOG 
+Generate VQA test result:  [ 0/60]  eta: 0:10:03    time: 10.0576  data: 2.2979  max mem: 5934
+Generate VQA test result:  [50/60]  eta: 0:00:44    time: 4.3531  data: 0.0002  max mem: 5934
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.1631  data: 0.0002  max mem: 5934
+Generate VQA test result: Total time: 0:04:25 (4.4274 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_epoch10.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 4.597 s
+3783 {'Bleu_1': 0.7950988240159985, 'Bleu_2': 0.622843224247996, 'Bleu_3': 0.4739488820463802, 'Bleu_4': 0.3556579056447606, 'METEOR': 0.25566197881746305, 'ROUGE_L': np.float64(0.5467636958703712), 'CIDEr': np.float64(0.8263992740024529), 'SPICE': np.float64(0.1895434636649664)}
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+['[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ']
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/usr/local/lib/python3.9/dist-packages/torch/_dynamo/eval_frame.py:929: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [0]  [   0/1953]  eta: 3:07:40  lr1: 0.000010  lr2: 0.000010  loss: 0.4735  time: 5.7655  data: 1.3175  max mem: 11592
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [0]  [  50/1953]  eta: 2:18:19  lr1: 0.000010  lr2: 0.000010  loss: 0.4628  time: 4.3560  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 100/1953]  eta: 2:14:14  lr1: 0.000010  lr2: 0.000010  loss: 0.4479  time: 4.3430  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 150/1953]  eta: 2:10:25  lr1: 0.000010  lr2: 0.000009  loss: 0.4402  time: 4.3193  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 200/1953]  eta: 2:06:42  lr1: 0.000010  lr2: 0.000009  loss: 0.4483  time: 4.3197  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 250/1953]  eta: 2:02:59  lr1: 0.000010  lr2: 0.000008  loss: 0.4460  time: 4.3192  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 300/1953]  eta: 1:59:20  lr1: 0.000010  lr2: 0.000008  loss: 0.4274  time: 4.3344  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 350/1953]  eta: 1:55:41  lr1: 0.000010  lr2: 0.000006  loss: 0.4747  time: 4.3153  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 400/1953]  eta: 1:52:01  lr1: 0.000010  lr2: 0.000006  loss: 0.4473  time: 4.3224  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 450/1953]  eta: 1:48:22  lr1: 0.000010  lr2: 0.000005  loss: 0.4392  time: 4.3170  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 500/1953]  eta: 1:44:45  lr1: 0.000010  lr2: 0.000005  loss: 0.4464  time: 4.3192  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 550/1953]  eta: 1:41:08  lr1: 0.000010  lr2: 0.000005  loss: 0.4242  time: 4.3216  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 600/1953]  eta: 1:37:31  lr1: 0.000010  lr2: 0.000005  loss: 0.4339  time: 4.3149  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 650/1953]  eta: 1:33:56  lr1: 0.000010  lr2: 0.000005  loss: 0.4643  time: 4.3449  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 700/1953]  eta: 1:30:19  lr1: 0.000010  lr2: 0.000005  loss: 0.5161  time: 4.3277  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 750/1953]  eta: 1:26:43  lr1: 0.000010  lr2: 0.000005  loss: 0.4464  time: 4.3388  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [ 800/1953]  eta: 1:23:06  lr1: 0.000010  lr2: 0.000005  loss: 0.4651  time: 4.3065  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 850/1953]  eta: 1:19:29  lr1: 0.000010  lr2: 0.000005  loss: 0.4610  time: 4.3193  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 900/1953]  eta: 1:15:52  lr1: 0.000010  lr2: 0.000005  loss: 0.4504  time: 4.3045  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [ 950/1953]  eta: 1:12:16  lr1: 0.000010  lr2: 0.000005  loss: 0.4769  time: 4.3225  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1000/1953]  eta: 1:08:39  lr1: 0.000010  lr2: 0.000005  loss: 0.4247  time: 4.3287  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1050/1953]  eta: 1:05:03  lr1: 0.000010  lr2: 0.000005  loss: 0.4482  time: 4.3132  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1100/1953]  eta: 1:01:26  lr1: 0.000010  lr2: 0.000005  loss: 0.4841  time: 4.3196  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1150/1953]  eta: 0:57:50  lr1: 0.000010  lr2: 0.000005  loss: 0.4713  time: 4.3253  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [1200/1953]  eta: 0:54:14  lr1: 0.000010  lr2: 0.000005  loss: 0.4284  time: 4.3099  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1250/1953]  eta: 0:50:38  lr1: 0.000010  lr2: 0.000005  loss: 0.4794  time: 4.3203  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1300/1953]  eta: 0:47:02  lr1: 0.000010  lr2: 0.000005  loss: 0.4415  time: 4.3277  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1350/1953]  eta: 0:43:26  lr1: 0.000010  lr2: 0.000005  loss: 0.5164  time: 4.3351  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [1400/1953]  eta: 0:39:50  lr1: 0.000010  lr2: 0.000005  loss: 0.4551  time: 4.3124  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1450/1953]  eta: 0:36:14  lr1: 0.000010  lr2: 0.000005  loss: 0.4688  time: 4.3190  data: 0.0004  max mem: 16125
+Train Epoch: [0]  [1500/1953]  eta: 0:32:38  lr1: 0.000010  lr2: 0.000005  loss: 0.4684  time: 4.3240  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1550/1953]  eta: 0:29:01  lr1: 0.000010  lr2: 0.000005  loss: 0.4758  time: 4.3224  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [1600/1953]  eta: 0:25:25  lr1: 0.000010  lr2: 0.000005  loss: 0.4380  time: 4.3207  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [1650/1953]  eta: 0:21:49  lr1: 0.000010  lr2: 0.000005  loss: 0.4911  time: 4.3192  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [1700/1953]  eta: 0:18:13  lr1: 0.000010  lr2: 0.000005  loss: 0.4189  time: 4.3213  data: 0.0002  max mem: 16125
+Train Epoch: [0]  [1750/1953]  eta: 0:14:37  lr1: 0.000010  lr2: 0.000005  loss: 0.4502  time: 4.3084  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1800/1953]  eta: 0:11:01  lr1: 0.000010  lr2: 0.000005  loss: 0.4623  time: 4.3069  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1850/1953]  eta: 0:07:25  lr1: 0.000010  lr2: 0.000005  loss: 0.4204  time: 4.3147  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1900/1953]  eta: 0:03:49  lr1: 0.000010  lr2: 0.000005  loss: 0.4467  time: 4.3127  data: 0.0003  max mem: 16125
+Train Epoch: [0]  [1950/1953]  eta: 0:00:12  lr1: 0.000010  lr2: 0.000005  loss: 0.4424  time: 4.3235  data: 0.0008  max mem: 16125
+Train Epoch: [0]  [1952/1953]  eta: 0:00:04  lr1: 0.000010  lr2: 0.000005  loss: 0.4471  time: 4.3163  data: 0.0008  max mem: 16125
+Train Epoch: [0] Total time: 2:20:40 (4.3217 s / it)
+Averaged stats: lr1: 0.0000  lr2: 0.0000  loss: 0.4531
+/usr/local/lib/python3.9/dist-packages/torch/utils/checkpoint.py:85: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+Generate VQA test result:  [ 0/60]  eta: 0:06:05    time: 6.0902  data: 1.2871  max mem: 16125
+Generate VQA test result:  [50/60]  eta: 0:00:43    time: 4.3441  data: 0.0002  max mem: 16125
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.1717  data: 0.0002  max mem: 16125
+Generate VQA test result: Total time: 0:04:21 (4.3526 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_flickr30k_epoch0.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Initiating Stanford parsing pipeline
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator tokenize
+[main] INFO edu.stanford.nlp.pipeline.TokenizerAnnotator - TokenizerAnnotator: No tokenizer type provided. Defaulting to PTBTokenizer.
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ssplit
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator parse
+[main] INFO edu.stanford.nlp.parser.common.ParserGrammar - Loading parser from serialized file edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz ... 
+done [0.3 sec].
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator lemma
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ner
+Loading classifier from edu/stanford/nlp/models/ner/english.all.3class.distsim.crf.ser.gz ... done [0.8 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz ... done [0.4 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.conll.4class.distsim.crf.ser.gz ... done [0.4 sec].
+Threads( StanfordCoreNLP ) [5.772 seconds]
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 13.53 s
+3783 {'Bleu_1': 0.7968747181846536, 'Bleu_2': 0.6252231377246477, 'Bleu_3': 0.4756481546391804, 'Bleu_4': 0.35733688427273674, 'METEOR': 0.2551172731086519, 'ROUGE_L': np.float64(0.5465405151874008), 'CIDEr': np.float64(0.8300186935610014), 'SPICE': np.float64(0.18965117746818033)}
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+['[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ']
+/usr/local/lib/python3.9/dist-packages/torch/_dynamo/eval_frame.py:929: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [1]  [   0/1953]  eta: 3:07:41  lr1: 0.000009  lr2: 0.000005  loss: 0.4378  time: 5.7664  data: 1.6300  max mem: 16125
+Train Epoch: [1]  [  50/1953]  eta: 2:17:41  lr1: 0.000009  lr2: 0.000005  loss: 0.4323  time: 4.3191  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 100/1953]  eta: 2:13:27  lr1: 0.000009  lr2: 0.000005  loss: 0.4493  time: 4.3017  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 150/1953]  eta: 2:09:47  lr1: 0.000009  lr2: 0.000005  loss: 0.4189  time: 4.3166  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 200/1953]  eta: 2:06:13  lr1: 0.000009  lr2: 0.000005  loss: 0.4376  time: 4.3250  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 250/1953]  eta: 2:02:32  lr1: 0.000009  lr2: 0.000005  loss: 0.4336  time: 4.3040  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 300/1953]  eta: 1:58:54  lr1: 0.000009  lr2: 0.000005  loss: 0.4023  time: 4.3083  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 350/1953]  eta: 1:55:22  lr1: 0.000009  lr2: 0.000005  loss: 0.4227  time: 4.3145  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 400/1953]  eta: 1:51:45  lr1: 0.000009  lr2: 0.000005  loss: 0.4229  time: 4.3043  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 450/1953]  eta: 1:48:08  lr1: 0.000009  lr2: 0.000005  loss: 0.4161  time: 4.3055  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 500/1953]  eta: 1:44:31  lr1: 0.000009  lr2: 0.000005  loss: 0.4484  time: 4.3049  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 550/1953]  eta: 1:40:55  lr1: 0.000009  lr2: 0.000005  loss: 0.4305  time: 4.3044  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 600/1953]  eta: 1:37:18  lr1: 0.000009  lr2: 0.000005  loss: 0.4433  time: 4.3146  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 650/1953]  eta: 1:33:42  lr1: 0.000009  lr2: 0.000005  loss: 0.4439  time: 4.3107  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 700/1953]  eta: 1:30:07  lr1: 0.000009  lr2: 0.000005  loss: 0.4322  time: 4.3079  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 750/1953]  eta: 1:26:31  lr1: 0.000009  lr2: 0.000005  loss: 0.4768  time: 4.3197  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 800/1953]  eta: 1:22:55  lr1: 0.000009  lr2: 0.000005  loss: 0.4138  time: 4.3138  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 850/1953]  eta: 1:19:35  lr1: 0.000009  lr2: 0.000005  loss: 0.4427  time: 4.5875  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 900/1953]  eta: 1:16:13  lr1: 0.000009  lr2: 0.000005  loss: 0.4366  time: 4.5863  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [ 950/1953]  eta: 1:12:49  lr1: 0.000009  lr2: 0.000005  loss: 0.4389  time: 4.5886  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1000/1953]  eta: 1:09:22  lr1: 0.000009  lr2: 0.000005  loss: 0.4424  time: 4.5831  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1050/1953]  eta: 1:05:52  lr1: 0.000009  lr2: 0.000005  loss: 0.4243  time: 4.5834  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1100/1953]  eta: 1:02:21  lr1: 0.000009  lr2: 0.000005  loss: 0.4384  time: 4.5703  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1150/1953]  eta: 0:58:48  lr1: 0.000009  lr2: 0.000005  loss: 0.4133  time: 4.5818  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1200/1953]  eta: 0:55:14  lr1: 0.000009  lr2: 0.000005  loss: 0.4585  time: 4.5804  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1250/1953]  eta: 0:51:39  lr1: 0.000009  lr2: 0.000005  loss: 0.4548  time: 4.5691  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1300/1953]  eta: 0:48:03  lr1: 0.000009  lr2: 0.000005  loss: 0.4585  time: 4.5859  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1350/1953]  eta: 0:44:26  lr1: 0.000009  lr2: 0.000005  loss: 0.4334  time: 4.5928  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1400/1953]  eta: 0:40:48  lr1: 0.000009  lr2: 0.000005  loss: 0.4287  time: 4.5720  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1450/1953]  eta: 0:37:09  lr1: 0.000009  lr2: 0.000005  loss: 0.4621  time: 4.5957  data: 0.0004  max mem: 16125
+Train Epoch: [1]  [1500/1953]  eta: 0:33:30  lr1: 0.000009  lr2: 0.000005  loss: 0.4347  time: 4.5800  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1550/1953]  eta: 0:29:50  lr1: 0.000009  lr2: 0.000005  loss: 0.4508  time: 4.6202  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1600/1953]  eta: 0:26:09  lr1: 0.000009  lr2: 0.000005  loss: 0.4286  time: 4.5884  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1650/1953]  eta: 0:22:28  lr1: 0.000009  lr2: 0.000005  loss: 0.4596  time: 4.5824  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1700/1953]  eta: 0:18:47  lr1: 0.000009  lr2: 0.000005  loss: 0.4496  time: 4.5743  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1750/1953]  eta: 0:15:05  lr1: 0.000009  lr2: 0.000005  loss: 0.3946  time: 4.5929  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1800/1953]  eta: 0:11:22  lr1: 0.000009  lr2: 0.000005  loss: 0.4189  time: 4.5765  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1850/1953]  eta: 0:07:39  lr1: 0.000009  lr2: 0.000005  loss: 0.4229  time: 4.5798  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1900/1953]  eta: 0:03:56  lr1: 0.000009  lr2: 0.000005  loss: 0.4236  time: 4.5810  data: 0.0003  max mem: 16125
+Train Epoch: [1]  [1950/1953]  eta: 0:00:13  lr1: 0.000009  lr2: 0.000005  loss: 0.4422  time: 4.5759  data: 0.0012  max mem: 16125
+Train Epoch: [1]  [1952/1953]  eta: 0:00:04  lr1: 0.000009  lr2: 0.000005  loss: 0.4239  time: 4.5739  data: 0.0012  max mem: 16125
+Train Epoch: [1] Total time: 2:25:32 (4.4714 s / it)
+Averaged stats: lr1: 0.0000  lr2: 0.0000  loss: 0.4361
+/usr/local/lib/python3.9/dist-packages/torch/utils/checkpoint.py:85: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+Generate VQA test result:  [ 0/60]  eta: 0:06:21    time: 6.3604  data: 1.2321  max mem: 16125
+Generate VQA test result:  [50/60]  eta: 0:00:48    time: 4.8572  data: 0.0002  max mem: 16125
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.6475  data: 0.0002  max mem: 16125
+Generate VQA test result: Total time: 0:04:49 (4.8285 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_flickr30k_epoch1.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Initiating Stanford parsing pipeline
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator tokenize
+[main] INFO edu.stanford.nlp.pipeline.TokenizerAnnotator - TokenizerAnnotator: No tokenizer type provided. Defaulting to PTBTokenizer.
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ssplit
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator parse
+[main] INFO edu.stanford.nlp.parser.common.ParserGrammar - Loading parser from serialized file edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz ... 
+done [0.3 sec].
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator lemma
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ner
+Loading classifier from edu/stanford/nlp/models/ner/english.all.3class.distsim.crf.ser.gz ... done [0.8 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz ... done [0.4 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.conll.4class.distsim.crf.ser.gz ... done [0.5 sec].
+Threads( StanfordCoreNLP ) [4.539 seconds]
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 11.83 s
+3783 {'Bleu_1': 0.7979432106669885, 'Bleu_2': 0.6248876843142168, 'Bleu_3': 0.47387909031842923, 'Bleu_4': 0.35433845688497956, 'METEOR': 0.2547044765667652, 'ROUGE_L': np.float64(0.5457536163144644), 'CIDEr': np.float64(0.8234623617801379), 'SPICE': np.float64(0.18965129723651197)}
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+['[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ']
+/usr/local/lib/python3.9/dist-packages/torch/_dynamo/eval_frame.py:929: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [2]  [   0/1953]  eta: 3:18:49  lr1: 0.000007  lr2: 0.000004  loss: 0.3988  time: 6.1084  data: 1.4800  max mem: 16125
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [2]  [  50/1953]  eta: 2:26:41  lr1: 0.000007  lr2: 0.000004  loss: 0.4348  time: 4.6026  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 100/1953]  eta: 2:22:30  lr1: 0.000007  lr2: 0.000004  loss: 0.4262  time: 4.5975  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 150/1953]  eta: 2:18:28  lr1: 0.000007  lr2: 0.000004  loss: 0.4140  time: 4.5942  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 200/1953]  eta: 2:14:37  lr1: 0.000007  lr2: 0.000004  loss: 0.4191  time: 4.5993  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 250/1953]  eta: 2:10:41  lr1: 0.000007  lr2: 0.000004  loss: 0.4483  time: 4.6047  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 300/1953]  eta: 2:06:53  lr1: 0.000007  lr2: 0.000004  loss: 0.4565  time: 4.6028  data: 0.0004  max mem: 16125
+Train Epoch: [2]  [ 350/1953]  eta: 2:03:04  lr1: 0.000007  lr2: 0.000004  loss: 0.4237  time: 4.5638  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 400/1953]  eta: 1:59:14  lr1: 0.000007  lr2: 0.000004  loss: 0.3942  time: 4.5965  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 450/1953]  eta: 1:55:23  lr1: 0.000007  lr2: 0.000004  loss: 0.3947  time: 4.6059  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 500/1953]  eta: 1:51:33  lr1: 0.000007  lr2: 0.000004  loss: 0.4257  time: 4.6185  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 550/1953]  eta: 1:47:41  lr1: 0.000007  lr2: 0.000004  loss: 0.4026  time: 4.5967  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 600/1953]  eta: 1:43:51  lr1: 0.000007  lr2: 0.000004  loss: 0.3942  time: 4.6141  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 650/1953]  eta: 1:40:01  lr1: 0.000007  lr2: 0.000004  loss: 0.4066  time: 4.6167  data: 0.0002  max mem: 16125
+Train Epoch: [2]  [ 700/1953]  eta: 1:36:10  lr1: 0.000007  lr2: 0.000004  loss: 0.4122  time: 4.5945  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 750/1953]  eta: 1:32:19  lr1: 0.000007  lr2: 0.000004  loss: 0.4401  time: 4.5966  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 800/1953]  eta: 1:28:28  lr1: 0.000007  lr2: 0.000004  loss: 0.4398  time: 4.5994  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 850/1953]  eta: 1:24:21  lr1: 0.000007  lr2: 0.000004  loss: 0.4178  time: 4.3186  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 900/1953]  eta: 1:20:15  lr1: 0.000007  lr2: 0.000004  loss: 0.3873  time: 4.3119  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [ 950/1953]  eta: 1:16:13  lr1: 0.000007  lr2: 0.000004  loss: 0.4154  time: 4.3073  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1000/1953]  eta: 1:12:13  lr1: 0.000007  lr2: 0.000004  loss: 0.4359  time: 4.3055  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1050/1953]  eta: 1:08:16  lr1: 0.000007  lr2: 0.000004  loss: 0.4782  time: 4.3176  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1100/1953]  eta: 1:04:21  lr1: 0.000007  lr2: 0.000004  loss: 0.4381  time: 4.3168  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1150/1953]  eta: 1:00:27  lr1: 0.000007  lr2: 0.000004  loss: 0.3933  time: 4.3433  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1200/1953]  eta: 0:56:35  lr1: 0.000007  lr2: 0.000004  loss: 0.4294  time: 4.3100  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1250/1953]  eta: 0:52:45  lr1: 0.000007  lr2: 0.000004  loss: 0.4160  time: 4.3391  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1300/1953]  eta: 0:48:55  lr1: 0.000007  lr2: 0.000004  loss: 0.4506  time: 4.3187  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1350/1953]  eta: 0:45:07  lr1: 0.000007  lr2: 0.000004  loss: 0.4343  time: 4.3241  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1400/1953]  eta: 0:41:19  lr1: 0.000007  lr2: 0.000004  loss: 0.3964  time: 4.3399  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1450/1953]  eta: 0:37:32  lr1: 0.000007  lr2: 0.000004  loss: 0.4199  time: 4.3301  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1500/1953]  eta: 0:33:46  lr1: 0.000007  lr2: 0.000004  loss: 0.4148  time: 4.3244  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1550/1953]  eta: 0:30:00  lr1: 0.000007  lr2: 0.000004  loss: 0.4622  time: 4.3182  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1600/1953]  eta: 0:26:15  lr1: 0.000007  lr2: 0.000004  loss: 0.4346  time: 4.3203  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1650/1953]  eta: 0:22:31  lr1: 0.000007  lr2: 0.000004  loss: 0.4238  time: 4.3240  data: 0.0006  max mem: 16125
+Train Epoch: [2]  [1700/1953]  eta: 0:18:47  lr1: 0.000007  lr2: 0.000004  loss: 0.4708  time: 4.3911  data: 0.0002  max mem: 16125
+Train Epoch: [2]  [1750/1953]  eta: 0:15:03  lr1: 0.000007  lr2: 0.000004  loss: 0.4254  time: 4.3135  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1800/1953]  eta: 0:11:20  lr1: 0.000007  lr2: 0.000004  loss: 0.4009  time: 4.3485  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1850/1953]  eta: 0:07:37  lr1: 0.000007  lr2: 0.000004  loss: 0.4686  time: 4.3043  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1900/1953]  eta: 0:03:55  lr1: 0.000007  lr2: 0.000004  loss: 0.4677  time: 4.3093  data: 0.0003  max mem: 16125
+Train Epoch: [2]  [1950/1953]  eta: 0:00:13  lr1: 0.000007  lr2: 0.000004  loss: 0.4642  time: 4.3197  data: 0.0009  max mem: 16125
+Train Epoch: [2]  [1952/1953]  eta: 0:00:04  lr1: 0.000007  lr2: 0.000004  loss: 0.4077  time: 4.3209  data: 0.0009  max mem: 16125
+Train Epoch: [2] Total time: 2:24:28 (4.4388 s / it)
+Averaged stats: lr1: 0.0000  lr2: 0.0000  loss: 0.4242
+/usr/local/lib/python3.9/dist-packages/torch/utils/checkpoint.py:85: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+Generate VQA test result:  [ 0/60]  eta: 0:05:49    time: 5.8202  data: 1.3172  max mem: 16125
+Generate VQA test result:  [50/60]  eta: 0:00:45    time: 4.4396  data: 0.0002  max mem: 16125
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.2235  data: 0.0002  max mem: 16125
+Generate VQA test result: Total time: 0:04:27 (4.4615 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_flickr30k_epoch2.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Initiating Stanford parsing pipeline
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator tokenize
+[main] INFO edu.stanford.nlp.pipeline.TokenizerAnnotator - TokenizerAnnotator: No tokenizer type provided. Defaulting to PTBTokenizer.
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ssplit
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator parse
+[main] INFO edu.stanford.nlp.parser.common.ParserGrammar - Loading parser from serialized file edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz ... 
+done [0.3 sec].
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator lemma
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ner
+Loading classifier from edu/stanford/nlp/models/ner/english.all.3class.distsim.crf.ser.gz ... done [0.8 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz ... done [0.4 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.conll.4class.distsim.crf.ser.gz ... done [0.5 sec].
+Threads( StanfordCoreNLP ) [5.975 seconds]
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 13.97 s
+3783 {'Bleu_1': 0.7893652826965869, 'Bleu_2': 0.6142549602728687, 'Bleu_3': 0.4632779012946307, 'Bleu_4': 0.34469058279377157, 'METEOR': 0.2550553016852788, 'ROUGE_L': np.float64(0.5423612857954303), 'CIDEr': np.float64(0.8151426659664472), 'SPICE': np.float64(0.19115152081271847)}
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+['[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ']
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/usr/local/lib/python3.9/dist-packages/torch/_dynamo/eval_frame.py:929: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [3]  [   0/1953]  eta: 3:14:35  lr1: 0.000004  lr2: 0.000002  loss: 0.3782  time: 5.9783  data: 1.5655  max mem: 16125
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [3]  [  50/1953]  eta: 2:18:01  lr1: 0.000004  lr2: 0.000002  loss: 0.4298  time: 4.3151  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 100/1953]  eta: 2:14:04  lr1: 0.000004  lr2: 0.000002  loss: 0.4189  time: 4.3278  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 150/1953]  eta: 2:10:10  lr1: 0.000004  lr2: 0.000002  loss: 0.4683  time: 4.3161  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 200/1953]  eta: 2:06:31  lr1: 0.000004  lr2: 0.000002  loss: 0.4173  time: 4.3143  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 250/1953]  eta: 2:02:49  lr1: 0.000004  lr2: 0.000002  loss: 0.4390  time: 4.3199  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 300/1953]  eta: 1:59:09  lr1: 0.000004  lr2: 0.000002  loss: 0.3659  time: 4.3045  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 350/1953]  eta: 1:55:30  lr1: 0.000004  lr2: 0.000002  loss: 0.4485  time: 4.3088  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 400/1953]  eta: 1:51:54  lr1: 0.000004  lr2: 0.000002  loss: 0.4160  time: 4.3258  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 450/1953]  eta: 1:48:17  lr1: 0.000004  lr2: 0.000002  loss: 0.3841  time: 4.3221  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 500/1953]  eta: 1:44:41  lr1: 0.000004  lr2: 0.000002  loss: 0.4012  time: 4.3201  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 550/1953]  eta: 1:41:05  lr1: 0.000004  lr2: 0.000002  loss: 0.3981  time: 4.3213  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 600/1953]  eta: 1:37:29  lr1: 0.000004  lr2: 0.000002  loss: 0.4020  time: 4.3302  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 650/1953]  eta: 1:33:52  lr1: 0.000004  lr2: 0.000002  loss: 0.3992  time: 4.3204  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 700/1953]  eta: 1:30:16  lr1: 0.000004  lr2: 0.000002  loss: 0.3886  time: 4.3402  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 750/1953]  eta: 1:26:40  lr1: 0.000004  lr2: 0.000002  loss: 0.3903  time: 4.3295  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 800/1953]  eta: 1:23:05  lr1: 0.000004  lr2: 0.000002  loss: 0.4253  time: 4.3417  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 850/1953]  eta: 1:19:29  lr1: 0.000004  lr2: 0.000002  loss: 0.4163  time: 4.3275  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 900/1953]  eta: 1:15:53  lr1: 0.000004  lr2: 0.000002  loss: 0.4057  time: 4.3176  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [ 950/1953]  eta: 1:12:16  lr1: 0.000004  lr2: 0.000002  loss: 0.3668  time: 4.3119  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1000/1953]  eta: 1:08:40  lr1: 0.000004  lr2: 0.000002  loss: 0.4067  time: 4.3129  data: 0.0002  max mem: 16125
+Train Epoch: [3]  [1050/1953]  eta: 1:05:04  lr1: 0.000004  lr2: 0.000002  loss: 0.4125  time: 4.3264  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1100/1953]  eta: 1:01:27  lr1: 0.000004  lr2: 0.000002  loss: 0.3978  time: 4.3165  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1150/1953]  eta: 0:57:51  lr1: 0.000004  lr2: 0.000002  loss: 0.4404  time: 4.3239  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1200/1953]  eta: 0:54:15  lr1: 0.000004  lr2: 0.000002  loss: 0.4765  time: 4.3571  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1250/1953]  eta: 0:50:39  lr1: 0.000004  lr2: 0.000002  loss: 0.3810  time: 4.3219  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1300/1953]  eta: 0:47:02  lr1: 0.000004  lr2: 0.000002  loss: 0.4250  time: 4.3196  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1350/1953]  eta: 0:43:26  lr1: 0.000004  lr2: 0.000002  loss: 0.4063  time: 4.3119  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1400/1953]  eta: 0:39:50  lr1: 0.000004  lr2: 0.000002  loss: 0.3994  time: 4.3260  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1450/1953]  eta: 0:36:14  lr1: 0.000004  lr2: 0.000002  loss: 0.3896  time: 4.3196  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1500/1953]  eta: 0:32:38  lr1: 0.000004  lr2: 0.000002  loss: 0.3980  time: 4.3065  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1550/1953]  eta: 0:29:02  lr1: 0.000004  lr2: 0.000002  loss: 0.4052  time: 4.3267  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1600/1953]  eta: 0:25:26  lr1: 0.000004  lr2: 0.000002  loss: 0.4165  time: 4.3233  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1650/1953]  eta: 0:21:50  lr1: 0.000004  lr2: 0.000002  loss: 0.4589  time: 4.3287  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1700/1953]  eta: 0:18:13  lr1: 0.000004  lr2: 0.000002  loss: 0.3928  time: 4.3132  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1750/1953]  eta: 0:14:37  lr1: 0.000004  lr2: 0.000002  loss: 0.4389  time: 4.3167  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1800/1953]  eta: 0:11:01  lr1: 0.000004  lr2: 0.000002  loss: 0.4396  time: 4.3149  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1850/1953]  eta: 0:07:25  lr1: 0.000004  lr2: 0.000002  loss: 0.3928  time: 4.5885  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1900/1953]  eta: 0:03:49  lr1: 0.000004  lr2: 0.000002  loss: 0.3920  time: 4.5932  data: 0.0003  max mem: 16125
+Train Epoch: [3]  [1950/1953]  eta: 0:00:13  lr1: 0.000004  lr2: 0.000002  loss: 0.3990  time: 4.5947  data: 0.0010  max mem: 16125
+Train Epoch: [3]  [1952/1953]  eta: 0:00:04  lr1: 0.000004  lr2: 0.000002  loss: 0.4269  time: 4.5947  data: 0.0010  max mem: 16125
+Train Epoch: [3] Total time: 2:21:22 (4.3433 s / it)
+Averaged stats: lr1: 0.0000  lr2: 0.0000  loss: 0.4153
+/usr/local/lib/python3.9/dist-packages/torch/utils/checkpoint.py:85: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+Generate VQA test result:  [ 0/60]  eta: 0:06:17    time: 6.2853  data: 1.2673  max mem: 16125
+Generate VQA test result:  [50/60]  eta: 0:00:48    time: 4.8168  data: 0.0002  max mem: 16125
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.5540  data: 0.0002  max mem: 16125
+Generate VQA test result: Total time: 0:04:48 (4.8030 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_flickr30k_epoch3.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Initiating Stanford parsing pipeline
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator tokenize
+[main] INFO edu.stanford.nlp.pipeline.TokenizerAnnotator - TokenizerAnnotator: No tokenizer type provided. Defaulting to PTBTokenizer.
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ssplit
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator parse
+[main] INFO edu.stanford.nlp.parser.common.ParserGrammar - Loading parser from serialized file edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz ... 
+done [0.3 sec].
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator lemma
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ner
+Loading classifier from edu/stanford/nlp/models/ner/english.all.3class.distsim.crf.ser.gz ... done [0.9 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz ... done [0.4 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.conll.4class.distsim.crf.ser.gz ... done [0.5 sec].
+Threads( StanfordCoreNLP ) [4.634 seconds]
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 11.96 s
+3783 {'Bleu_1': 0.7888945818760038, 'Bleu_2': 0.614770772308499, 'Bleu_3': 0.4650136080256294, 'Bleu_4': 0.3473821948369417, 'METEOR': 0.2518568327046819, 'ROUGE_L': np.float64(0.5400741793844215), 'CIDEr': np.float64(0.8043589914428708), 'SPICE': np.float64(0.18732779782443496)}
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+['[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ', '[CLS] ']
+/usr/local/lib/python3.9/dist-packages/torch/_dynamo/eval_frame.py:929: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+Train Epoch: [4]  [   0/1953]  eta: 3:25:22  lr1: 0.000002  lr2: 0.000001  loss: 0.3925  time: 6.3094  data: 1.7119  max mem: 16125
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+/workspace/main/mPLUG/dataset/randaugment.py:31: RuntimeWarning: overflow encountered in scalar negative
+  offset = -low * scale
+Train Epoch: [4]  [  50/1953]  eta: 2:26:39  lr1: 0.000002  lr2: 0.000001  loss: 0.4111  time: 4.5960  data: 0.0005  max mem: 16125
+Train Epoch: [4]  [ 100/1953]  eta: 2:22:19  lr1: 0.000002  lr2: 0.000001  loss: 0.4234  time: 4.5889  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 150/1953]  eta: 2:18:16  lr1: 0.000002  lr2: 0.000001  loss: 0.4029  time: 4.5943  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 200/1953]  eta: 2:14:22  lr1: 0.000002  lr2: 0.000001  loss: 0.4226  time: 4.5899  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 250/1953]  eta: 2:10:28  lr1: 0.000002  lr2: 0.000001  loss: 0.3932  time: 4.5960  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 300/1953]  eta: 2:06:36  lr1: 0.000002  lr2: 0.000001  loss: 0.3701  time: 4.5790  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 350/1953]  eta: 2:02:43  lr1: 0.000002  lr2: 0.000001  loss: 0.4175  time: 4.5836  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 400/1953]  eta: 1:58:53  lr1: 0.000002  lr2: 0.000001  loss: 0.3838  time: 4.6039  data: 0.0004  max mem: 16125
+Train Epoch: [4]  [ 450/1953]  eta: 1:55:01  lr1: 0.000002  lr2: 0.000001  loss: 0.4014  time: 4.5746  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 500/1953]  eta: 1:51:11  lr1: 0.000002  lr2: 0.000001  loss: 0.4097  time: 4.5768  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 550/1953]  eta: 1:47:21  lr1: 0.000002  lr2: 0.000001  loss: 0.3844  time: 4.5994  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 600/1953]  eta: 1:43:31  lr1: 0.000002  lr2: 0.000001  loss: 0.4034  time: 4.5867  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 650/1953]  eta: 1:39:41  lr1: 0.000002  lr2: 0.000001  loss: 0.4296  time: 4.5953  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 700/1953]  eta: 1:35:51  lr1: 0.000002  lr2: 0.000001  loss: 0.4029  time: 4.5900  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 750/1953]  eta: 1:32:00  lr1: 0.000002  lr2: 0.000001  loss: 0.4026  time: 4.5823  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 800/1953]  eta: 1:28:11  lr1: 0.000002  lr2: 0.000001  loss: 0.4408  time: 4.5911  data: 0.0004  max mem: 16125
+Train Epoch: [4]  [ 850/1953]  eta: 1:24:21  lr1: 0.000002  lr2: 0.000001  loss: 0.3920  time: 4.5876  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 900/1953]  eta: 1:20:31  lr1: 0.000002  lr2: 0.000001  loss: 0.4593  time: 4.5821  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [ 950/1953]  eta: 1:16:41  lr1: 0.000002  lr2: 0.000001  loss: 0.3894  time: 4.5558  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1000/1953]  eta: 1:12:53  lr1: 0.000002  lr2: 0.000001  loss: 0.4034  time: 4.6036  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1050/1953]  eta: 1:09:04  lr1: 0.000002  lr2: 0.000001  loss: 0.4034  time: 4.6147  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1100/1953]  eta: 1:05:15  lr1: 0.000002  lr2: 0.000001  loss: 0.3833  time: 4.5994  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1150/1953]  eta: 1:01:26  lr1: 0.000002  lr2: 0.000001  loss: 0.3970  time: 4.6051  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1200/1953]  eta: 0:57:37  lr1: 0.000002  lr2: 0.000001  loss: 0.4201  time: 4.6160  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1250/1953]  eta: 0:53:48  lr1: 0.000002  lr2: 0.000001  loss: 0.4070  time: 4.5947  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1300/1953]  eta: 0:49:58  lr1: 0.000002  lr2: 0.000001  loss: 0.4048  time: 4.6020  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1350/1953]  eta: 0:46:09  lr1: 0.000002  lr2: 0.000001  loss: 0.3647  time: 4.5893  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1400/1953]  eta: 0:42:20  lr1: 0.000002  lr2: 0.000001  loss: 0.3990  time: 4.5960  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1450/1953]  eta: 0:38:30  lr1: 0.000002  lr2: 0.000001  loss: 0.3655  time: 4.6076  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1500/1953]  eta: 0:34:41  lr1: 0.000002  lr2: 0.000001  loss: 0.4300  time: 4.6053  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1550/1953]  eta: 0:30:51  lr1: 0.000002  lr2: 0.000001  loss: 0.3825  time: 4.6135  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1600/1953]  eta: 0:27:01  lr1: 0.000002  lr2: 0.000001  loss: 0.4285  time: 4.5985  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1650/1953]  eta: 0:23:12  lr1: 0.000002  lr2: 0.000001  loss: 0.3925  time: 4.6095  data: 0.0002  max mem: 16125
+Train Epoch: [4]  [1700/1953]  eta: 0:19:22  lr1: 0.000002  lr2: 0.000001  loss: 0.4130  time: 4.5901  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1750/1953]  eta: 0:15:32  lr1: 0.000002  lr2: 0.000001  loss: 0.4020  time: 4.5985  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1800/1953]  eta: 0:11:43  lr1: 0.000002  lr2: 0.000001  loss: 0.4049  time: 4.5896  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1850/1953]  eta: 0:07:52  lr1: 0.000002  lr2: 0.000001  loss: 0.4369  time: 4.3035  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1900/1953]  eta: 0:04:02  lr1: 0.000002  lr2: 0.000001  loss: 0.3872  time: 4.3204  data: 0.0003  max mem: 16125
+Train Epoch: [4]  [1950/1953]  eta: 0:00:13  lr1: 0.000002  lr2: 0.000001  loss: 0.4170  time: 4.3023  data: 0.0008  max mem: 16125
+Train Epoch: [4]  [1952/1953]  eta: 0:00:04  lr1: 0.000002  lr2: 0.000001  loss: 0.4215  time: 4.3152  data: 0.0008  max mem: 16125
+Train Epoch: [4] Total time: 2:28:50 (4.5729 s / it)
+Averaged stats: lr1: 0.0000  lr2: 0.0000  loss: 0.4101
+/usr/local/lib/python3.9/dist-packages/torch/utils/checkpoint.py:85: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+Generate VQA test result:  [ 0/60]  eta: 0:05:53    time: 5.8978  data: 1.4059  max mem: 16125
+Generate VQA test result:  [50/60]  eta: 0:00:44    time: 4.4233  data: 0.0002  max mem: 16125
+Generate VQA test result:  [59/60]  eta: 0:00:04    time: 4.2197  data: 0.0002  max mem: 16125
+Generate VQA test result: Total time: 0:04:25 (4.4191 s / it)
+result file saved to output/coco_caption_large/result/vqa_result_flickr30k_epoch4.json
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.nustaq.serialization.FSTClazzInfo (file:/workspace/main/mPLUG/language-evaluation/language_evaluation/coco_caption_py3/pycocoevalcap/spice/lib/fst-2.47.jar) to field java.lang.String.value
+WARNING: Please consider reporting this to the maintainers of org.nustaq.serialization.FSTClazzInfo
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Parsing reference captions
+Parsing test captions
+Initiating Stanford parsing pipeline
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator tokenize
+[main] INFO edu.stanford.nlp.pipeline.TokenizerAnnotator - TokenizerAnnotator: No tokenizer type provided. Defaulting to PTBTokenizer.
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ssplit
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator parse
+[main] INFO edu.stanford.nlp.parser.common.ParserGrammar - Loading parser from serialized file edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz ... 
+done [0.3 sec].
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator lemma
+[main] INFO edu.stanford.nlp.pipeline.StanfordCoreNLP - Adding annotator ner
+Loading classifier from edu/stanford/nlp/models/ner/english.all.3class.distsim.crf.ser.gz ... done [0.8 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz ... done [0.4 sec].
+Loading classifier from edu/stanford/nlp/models/ner/english.conll.4class.distsim.crf.ser.gz ... done [0.5 sec].
+Threads( StanfordCoreNLP ) [4.100 seconds]
+Warning: Nashorn engine is planned to be removed from a future JDK release
+SPICE evaluation took: 11.93 s
+3783 {'Bleu_1': 0.7918844384225772, 'Bleu_2': 0.6169814139726402, 'Bleu_3': 0.46502608556030006, 'Bleu_4': 0.3456599612134393, 'METEOR': 0.252549429503637, 'ROUGE_L': np.float64(0.5405635110757454), 'CIDEr': np.float64(0.8082767523142086), 'SPICE': np.float64(0.18961385859618177)}
+Training time 12:31:41
+

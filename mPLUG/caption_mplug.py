@@ -360,7 +360,6 @@ if __name__ == '__main__':
     config['text_encoder'] = args.text_encoder
     config['text_decoder'] = args.text_decoder
 
-
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))
 
     main(args, config)

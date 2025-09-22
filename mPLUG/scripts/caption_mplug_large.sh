@@ -18,6 +18,9 @@ do
     --max_length 25 \
     --max_input_length 25 \
     --device cuda \
-    --dataset coco \
-    --evaluate
+    --dataset flickr30k
+    #--evaluate
+    #--device mps \
+    #--dataset flickr30k
+    #--evaluate \
 done

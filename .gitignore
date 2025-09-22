@@ -1,10 +1,12 @@
 # Unwanted big files and folders #
 ##################################
 mPLUG/output
-shared/data/coco_object/coco2014/*.jpg
 shared/data/coco_object/*.json
+shared/data/coco_object/dataset_coco/
 shared/data/flickr30k/*.json
+shared/data/flickr30k/*.csv
 shared/data/flickr30k/Images/
+shared/data/flickr30k/dataset_flickr/
 
 # Unwanted ungrouped extensions #
 #################################
