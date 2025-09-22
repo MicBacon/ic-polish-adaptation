@@ -1,6 +1,6 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import language_evaluation
 import numpy as np
 import random
@@ -274,7 +274,7 @@ def main(args, config):
     result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch10')
     if utils.is_main_process():
         result = cal_metric(result_file)
-    dist.barrier()
+    #dist.barrier()
     for epoch in range(start_epoch, max_epoch):
         if epoch > 0:
             lr_scheduler.step(epoch + warmup_steps)
@@ -308,7 +308,7 @@ def main(args, config):
                 'epoch': epoch,
             }, os.path.join(args.output_dir, 'checkpoint_%02d.pth' % epoch))
 
-        dist.barrier()
+        #dist.barrier()
 
     #vqa_result = evaluation(model, test_loader, tokenizer, device, config)
     #result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
