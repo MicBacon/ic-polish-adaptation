@@ -66,38 +66,55 @@ class ICMetricsCallback(TrainerCallback):
         self.fn = metrics_fn
         self.n = n_samples
         self.log_samples = log_samples
+        self._trainer = None
+
+    def set_trainer(self, trainer):
+        self._trainer = trainer
 
     def on_evaluate(self, args, state, control, **kwargs):
-        model = self.trainer.model.eval()
-        if self.n and self.n > 0:
-            ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))]
-        else:
-            ds = self.ds
+        if self._trainer is None or self._trainer.model is None:
+            return control
+        model = self._trainer.model.eval()
+        ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))] if (self.n and self.n > 0) else self.ds
         preds, refs, imgs = do_eval_generate(model, self.p, ds, self.refs)
         m = self.fn(preds, refs, imgs)
         logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
-        self.trainer.log(logs)
-        wandb.log(logs, step=state.global_step)
-        if self.log_samples and self.log_samples > 0:
-            table = wandb.Table(columns=["image","pred","ref"])
-            for i in range(min(self.log_samples, len(preds))):
-                table.add_data(wandb.Image(imgs[i]), preds[i], refs[i][0] if refs[i] else "")
-            wandb.log({"eval_samples": table}, step=state.global_step)
+        self._trainer.log(logs)
+        try:
+            wandb.log(logs, step=state.global_step)
+            if self.log_samples and self.log_samples > 0:
+                table = wandb.Table(columns=["image","pred","ref"])
+                for i in range(min(self.log_samples, len(preds))):
+                    table.add_data(wandb.Image(imgs[i]), preds[i], refs[i][0] if refs[i] else "")
+                wandb.log({"eval_samples": table}, step=state.global_step)
+        except Exception:
+            pass
         return control
-    
+
 class EarlyStopByMetric(TrainerCallback):
     def __init__(self, metric_name, greater_is_better=True, patience=3, save_best_dir=None):
-        self.m = metric_name; self.g = greater_is_better; self.p = patience
-        self.best = None; self.wait = 0; self.save_best_dir = save_best_dir
+        self.m = metric_name
+        self.g = greater_is_better
+        self.p = patience
+        self.best = None
+        self.wait = 0
+        self.save_best_dir = save_best_dir
+        self._trainer = None
+
+    def set_trainer(self, trainer):
+        self._trainer = trainer
+
     def on_log(self, args, state, control, logs=None, **kwargs):
-        if not logs or self.m not in logs: return control
+        if not logs or self.m not in logs:
+            return control
         v = logs[self.m]
         improved = (self.best is None) or (v > self.best if self.g else v < self.best)
         if improved:
-            self.best = v; self.wait = 0
-            if self.save_best_dir:
+            self.best = v
+            self.wait = 0
+            if self.save_best_dir and self._trainer is not None:
                 os.makedirs(self.save_best_dir, exist_ok=True)
-                self.trainer.save_model(self.save_best_dir)
+                self._trainer.save_model(self.save_best_dir)
         else:
             self.wait += 1
             if self.wait >= self.p:
