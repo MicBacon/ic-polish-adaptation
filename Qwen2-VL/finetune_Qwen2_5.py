@@ -227,7 +227,6 @@ def main():
         fp16=False,
         dataloader_pin_memory=True,
         remove_unused_columns=False,
-        report_to="none",
         max_grad_norm=1.0,
         prediction_loss_only=True,
         eval_accumulation_steps=2,
