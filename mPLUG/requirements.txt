@@ -11,3 +11,4 @@ opencv-python
 more_itertools
 colorlog
 ruamel.yaml==0.16.7
+wandb
