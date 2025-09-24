@@ -1,10 +1,13 @@
-import os
+import os, sys
 import json
 import torch
 from torch.utils.data import Dataset
 from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallback
 from transformers import Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+sys.path.append(os.path.dirname('/workspace/'))
+
 from shared.MetricComputer import MetricComputer
 import wandb
 
