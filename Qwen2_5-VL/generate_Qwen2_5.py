@@ -14,7 +14,7 @@ except Exception:
     HAS_PEFT = False
 
 MODEL_NAME_OR_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
-JSON_PATH = "../shared/data/flickr30k/flickr30kPolish_captions_test.json"
+JSON_PATH = "../shared/data/flickr30k/flickr30kPolish_captions_test_std.json"
 IMAGE_ROOT = "../shared/data/flickr30k/Images"
 IMAGE_EXTS = "jpg,jpeg,png"
 PEFT_ADAPTER_PATH = ""
@@ -155,6 +155,8 @@ def main():
         torch_dtype=torch_dtype,
         device_map="auto" if device.type == "cuda" else None,
     )
+
+    model.eval()
 
     if PEFT_ADAPTER_PATH:
         if HAS_PEFT:
