@@ -14,7 +14,7 @@ POLISH_DESC_PATH = '../shared/data/flickr30k/descriptions_flickr30k_translated.c
 
 _ = ts.preaccelerate_and_speedtest()
 
-# separate BERTscorer for translation
+# separate BERTscorer for machine translation
 bs = BERTScorer(model_type="xlm-roberta-large", rescale_with_baseline=False)
 
 with open(os.path.join(RESULT_PATH, SRC_FILE), 'r') as f:
