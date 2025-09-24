@@ -347,7 +347,7 @@ def main():
         disable_tqdm=True,
         log_level="error",
         report_to="wandb",
-        run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics",)
+        run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics_quantization",)
     
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
