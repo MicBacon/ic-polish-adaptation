@@ -91,6 +91,11 @@ def eval_sacrebleu(preds, refs):
             out["SacreBLEU"] = float(bleu.score)
         except Exception:
             pass
+        try: 
+            chrf = sacrebleu.corpus_chrf(preds, ref_sets) 
+            out["chrF++"] = float(chrf.score)
+        except Exception: 
+            pass
     except Exception:
         pass
     return out
@@ -126,7 +131,7 @@ class MetricComputer:
         clip_pretrained: str = "laion5b_s13b_b90k",
         clip_device: Optional[str] = None,
         clip_bs: int = 16,
-        clip_prompt_pl: str = "Na zdjęciu widać ",  # "A photo shows ..." luźno przetłumaczone
+        clip_prompt_pl: str = "Na zdjęciu widać ",  # equivalent of "A photo shows ..." loosely translated
     ):
         self.bertscorer = None
         try:
@@ -165,14 +170,11 @@ class MetricComputer:
             self.clip_device = torch.device(clip_device)
 
             try:
-                # Try user-specified model first
                 model, _, preprocess = open_clip.create_model_and_transforms(
                     clip_model_name, pretrained=clip_pretrained, device=self.clip_device
                 )
                 tokenizer = open_clip.get_tokenizer(clip_model_name)
             except Exception:
-                # Fallback to a widely available config from docs
-                # (ViT-B/32 + laion2b_s34b_b79k)
                 model, _, preprocess = open_clip.create_model_and_transforms(
                     "ViT-B-32", pretrained="laion2b_s34b_b79k", device=self.clip_device
                 )
@@ -277,11 +279,17 @@ class MetricComputer:
                 txt_feats = txt_feats / txt_feats.norm(dim=-1, keepdim=True)
 
             sims = (img_feats * txt_feats).sum(dim=-1).clamp(min=0)
-            scores = 100.0 * sims
-            scores_np = scores.detach().cpu().numpy()
+            scores_2_5 = 2.5 * sims
+            scores_100 = 100.0 * sims
 
-            out["CLIPScore_mean"] = float(np.mean(scores_np))
-            out["CLIPScore_std"] = float(np.std(scores_np))
+            score_2_5_np = scores_2_5.detach().cpu().numpy()
+            scores_100_np = scores_100.detach().cpu().numpy()
+
+            out["CLIPScore_mean_100"] = float(np.mean(scores_100_np))
+            out["CLIPScore_std_100"] = float(np.std(scores_100_np))
+
+            out["CLIPScore_mean_2_5"] = float(np.mean(score_2_5_np))
+            out["CLIPScore_std_2_5"] = float(np.std(score_2_5_np))
         except Exception as e:
             print(f"[MetricComputer] CLIPScore failed: {e}")
         return out
