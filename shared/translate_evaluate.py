@@ -6,8 +6,8 @@ from bert_score import BERTScorer
 import MetricComputer as cm
 
 CAPTION_COUNT = 3783
-RESULT_PATH = 'output/coco_caption_large/result/'
-TRANSLATED_RESULT_PATH = 'output/coco_caption_large/result_translated/'
+INPUT_PATH = ''
+RESULT_PATH = 'translate_evaluate_results/'
 SRC_FILE = 'vqa_result_flickr30k_epoch5.json'
 DST_FILE = 'vqa_result_flickr30k_epoch5_translated.json'
 POLISH_DESC_PATH = '../shared/data/flickr30k/descriptions_flickr30k_translated.csv'
@@ -17,12 +17,12 @@ _ = ts.preaccelerate_and_speedtest()
 # separate BERTscorer for machine translation
 bs = BERTScorer(model_type="xlm-roberta-large", rescale_with_baseline=False)
 
-with open(os.path.join(RESULT_PATH, SRC_FILE), 'r') as f:
+with open(INPUT_PATH, 'r') as f:
     data = json.load(f)
 
-    os.makedirs(TRANSLATED_RESULT_PATH, exist_ok=True)
+    os.makedirs(RESULT_PATH, exist_ok=True)
 
-    r = open(os.path.join(TRANSLATED_RESULT_PATH, DST_FILE), "w")
+    r = open(os.path.join(RESULT_PATH, DST_FILE), "w")
     r.write('[')
     
     for idx, item in enumerate(data[:CAPTION_COUNT]):
