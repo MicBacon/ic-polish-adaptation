@@ -3,7 +3,7 @@ import translators as ts
 import os
 import csv
 from bert_score import BERTScorer
-import shared.MetricComputer as cm
+import MetricComputer as cm
 
 CAPTION_COUNT = 3783
 RESULT_PATH = 'output/coco_caption_large/result/'
@@ -14,6 +14,7 @@ POLISH_DESC_PATH = '../shared/data/flickr30k/descriptions_flickr30k_translated.c
 
 _ = ts.preaccelerate_and_speedtest()
 
+# separate BERTscorer for translation
 bs = BERTScorer(model_type="xlm-roberta-large", rescale_with_baseline=False)
 
 with open(os.path.join(RESULT_PATH, SRC_FILE), 'r') as f:

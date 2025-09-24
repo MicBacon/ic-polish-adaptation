@@ -44,101 +44,71 @@ else:
 
 if flickrPolishOk and aideOk:
     print("Data is correct. Starting merging process...")
-    # split AIDe annotations randomly with fixed seed as training 100, validation 100 and training 800
+    # split AIDe annotations randomly with fixed seed
     print("Building training, validation and test sets...")
     random.seed(42)
 
     random.shuffle(data_AIDe)
-
-    # 1000 images annotated
-    aide_images_matching_flickr = [item for item in data_AIDe if item["Picture_orig_name"].split("_")[0] in flickr_polish_images]
-    train_set_AIDe = aide_images_matching_flickr[:800]
-    rest_AIDe = [item for item in data_AIDe if item["Picture_orig_name"] not in [x["Picture_orig_name"] for x in train_set_AIDe]]
-    val_set_AIDe = rest_AIDe[:100]
-    test_set_AIDe = rest_AIDe[100:]
-
     random.shuffle(data_Flickr)
 
-    # 31534 images annotated 
-    #train_set_flickr = data_Flickr[:25227] # ~80 %
-    #val_set_flickr = data_Flickr[25227:29957] # ~15%
-    #test_set_flickr = data_Flickr[29957:] # ~5%
-
-    # stick with just train set for flickr, so 800 of images will have 7 captions in training set
-    train_set_flickr = data_Flickr # 100%
-
-    with open("flickr30kPolish_captions_train.json", "w") as dest:
-        dest.write("[\n")
-        
-        # first process merging of 800 annotations
-        for item in train_set_AIDe:
+    aide_unique = {}
+    for item in data_AIDe:
+        img_id = item["Picture_orig_name"].split("_")[0]
+        if img_id not in aide_unique and img_id in flickr_polish_images:
             captions = []
-            # get image id
-            img_id = item["Picture_orig_name"].split("_")[0] # remove suffixes after _
-
             captions.append(item["Caption_1"])
             captions.append(item["Caption_2"])
+            captions = [c for c in captions if isinstance(c, str) and c.strip()]
+            aide_unique[img_id] = captions
 
-            # find image id in flickr set
-            for flickr_item in train_set_flickr:
-                if flickr_item[0].__str__() == img_id:
-                    for caption in flickr_item[1]:
-                        captions.append(caption)
-                    
-                    # delete matched item from flickr
-                    train_set_flickr.remove(flickr_item)
+    intersection_ids = set(aide_unique.keys())
+    flickr_candidates = [item for item in data_Flickr if item[0].__str__() not in intersection_ids]
 
-            json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
-            dest.write(",\n")
-        
-        # add rest flickr items to train set
+    val_set_flickr = flickr_candidates[:1000]
+    test_set_flickr = flickr_candidates[1000:2000]
+    train_set_flickr = flickr_candidates[2000:]
+
+    with open("flickr30kPolish_captions_train.json", "w", encoding="utf-8") as dest:
+        dest.write("[\n")
         for item in train_set_flickr:
             captions = []
             img_id = item[0]
             captions = item[1]
-
-            if img_id.__str__() not in [item["Picture_orig_name"].split("_")[0] for item in val_set_AIDe] and img_id.__str__() not in [item["Picture_orig_name"].split("_")[0] for item in test_set_AIDe]:
-                json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
-                dest.write(",\n")
-
-        #delete comma from last item
+            json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
+            dest.write(",\n")
         dest.seek(dest.tell() - 2, os.SEEK_SET)
         dest.write("]\n")
-
         print("Training set created.")
 
-        with open("flickr30kPolish_captions_val.json", "w") as dest:
-            dest.write("[\n")
-            for item in val_set_AIDe:
-                captions = []
-                # get image id
-                img_id = item["Picture_orig_name"].split("_")[0] # remove suffixes after _
-
-                captions.append(item["Caption_1"])
-                captions.append(item["Caption_2"])
-
-                json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
-                dest.write(",\n")
-
-            dest.seek(dest.tell() - 2, os.SEEK_SET)
-            dest.write("]\n")
-
+    with open("flickr30kPolish_captions_val.json", "w", encoding="utf-8") as dest:
+        dest.write("[\n")
+        for item in val_set_flickr:
+            captions = []
+            img_id = item[0]
+            captions = item[1]
+            json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
+            dest.write(",\n")
+        dest.seek(dest.tell() - 2, os.SEEK_SET)
+        dest.write("]\n")
         print("Validation set created.")
 
-        with open("flickr30kPolish_captions_test.json", "w") as dest:
-            dest.write("[\n")
-            for item in test_set_AIDe:
-                captions = []
-                # get image id
-                img_id = item["Picture_orig_name"].split("_")[0] # remove suffixes after _
+    with open("flickr30kPolish_captions_test_std.json", "w", encoding="utf-8") as dest:
+        dest.write("[\n")
+        for item in test_set_flickr:
+            captions = []
+            img_id = item[0]
+            captions = item[1]
+            json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
+            dest.write(",\n")
+        dest.seek(dest.tell() - 2, os.SEEK_SET)
+        dest.write("]\n")
+        print("Test-STD set created.")
 
-                captions.append(item["Caption_1"])
-                captions.append(item["Caption_2"])
-
-                json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
-                dest.write(",\n")
-
-            dest.seek(dest.tell() - 2, os.SEEK_SET)
-            dest.write("]\n")
-        
-        print("Test set created.")
+    with open("flickr30kPolish_captions_test_hq.json", "w", encoding="utf-8") as dest:
+        dest.write("[\n")
+        for img_id, captions in aide_unique.items():
+            json.dump({"image_id": img_id, "captions": captions}, dest, ensure_ascii=False)
+            dest.write(",\n")
+        dest.seek(dest.tell() - 2, os.SEEK_SET)
+        dest.write("]\n")
+        print("Test-HQ set created.")
