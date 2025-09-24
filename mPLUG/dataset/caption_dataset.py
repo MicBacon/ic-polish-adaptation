@@ -159,9 +159,7 @@ class coco_dataset(Dataset):
         for each in self.ann:
             filename = each["filename"]
             sentences = each["sentences"]
-            filepath = each["filepath"]
-            file_root = filepath
-            image_path = os.path.join(file_root, filename)
+            image_path = filename
             gold_caption = []
             for sent in sentences:
                 caption = sent["raw"]
