@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallback
 from transformers import Qwen2_5_VLForConditionalGeneration
-from peft import LoraConfig, get_peft_model, BitsAndBytesConfig
+from peft import LoraConfig, get_peft_model, BitsAndBytesConfig, prepare_model_for_kbit_training
 from shared.MetricComputer import MetricComputer
 import wandb
 
@@ -63,13 +63,14 @@ def image_id_from_path(p):
     return os.path.splitext(b)[0]
 
 class ICMetricsCallback(TrainerCallback):
-    def __init__(self, processor, val_ds, refs_map, metrics_fn, n_samples=0, log_samples=0):
+    def __init__(self, processor, val_ds, refs_map, n_samples=0, log_samples=0):
         self.p = processor
         self.ds = val_ds
         self.refs = refs_map
         self.n = n_samples
         self.log_samples = log_samples
         self._trainer = None
+        self.mc = mc
 
     def set_trainer(self, trainer):
         self._trainer = trainer
@@ -188,10 +189,34 @@ class DataCollatorQwenVL:
         attention_mask = proc_out["attention_mask"]
         labels = input_ids.clone()
         labels[attention_mask == 0] = -100
+
+        mm_mask = proc_out.get("mm_token_mask", None)
+        if mm_mask is not None:
+            labels[mm_mask.bool()] = -100
+        else:
+            tok = self.processor.tokenizer
+            image_id = getattr(tok, "image_token_id", None)
+            video_id = getattr(tok, "video_token_id", None)
+            if image_id is not None:
+                labels[input_ids == image_id] = -100
+            if video_id is not None:
+                labels[input_ids == video_id] = -100
+
         for i, messages in enumerate(all_messages):
             prompt_only = [messages[0], messages[1]]
-            prompt_text = self.processor.apply_chat_template(prompt_only, tokenize=False, add_generation_prompt=True)
-            pt = self.processor(text=[prompt_text], padding=False, return_tensors="pt")
+            prompt_text = self.processor.apply_chat_template(
+                prompt_only, tokenize=False, add_generation_prompt=True
+            )
+
+            if qwen_process_vision_info is not None:
+                prompt_images, _ = qwen_process_vision_info(prompt_only)
+            else:
+                prompt_images = []
+                for seg in messages[1]["content"]:
+                    if seg.get("type") == "image":
+                        prompt_images.append(seg["image"])
+
+            pt = self.processor(text=[prompt_text], images=[prompt_images], padding=False, return_tensors="pt")
             prompt_len = min(pt["input_ids"].shape[1], labels.shape[1])
             labels[i, :prompt_len] = -100
         batch_out = {"input_ids": input_ids, "labels": labels, "attention_mask": attention_mask}
@@ -255,8 +280,11 @@ def main():
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
+ 
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_PATH, quantization_config=bnb_config, **model_kwargs)
 
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_PATH, dtype=dtype, quantization_config=bnb_config, **model_kwargs)
+    model = prepare_model_for_kbit_training(model)
+    
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
 
     refs_map = {}
