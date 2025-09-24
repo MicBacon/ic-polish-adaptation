@@ -160,12 +160,7 @@ class coco_dataset(Dataset):
             filename = each["filename"]
             sentences = each["sentences"]
             filepath = each["filepath"]
-            if filepath == "val2014":
-                file_root = "val2014_img"
-            elif filepath == "train2014":
-                file_root = "train2014_img"
-            else:
-                file_root = filepath
+            file_root = filepath
             image_path = os.path.join(file_root, filename)
             gold_caption = []
             for sent in sentences:
