@@ -2,9 +2,10 @@ import os
 import json
 import torch
 from torch.utils.data import Dataset
-from transformers import AutoProcessor, TrainingArguments, Trainer, EarlyStoppingCallback, TrainerCallback
+from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallback
 from transformers import Qwen2_5_VLForConditionalGeneration
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, BitsAndBytesConfig
+from shared.MetricComputer import MetricComputer
 import wandb
 
 try:
@@ -41,6 +42,8 @@ WANDB_LOG_SAMPLES = 4
 os.environ["WANDB_PROJECT"] = "magisterka"
 os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
+mc = MetricComputer()
+
 def read_jsonl(path):
     out = []
     with open(path, "r", encoding="utf-8") as f:
@@ -64,7 +67,6 @@ class ICMetricsCallback(TrainerCallback):
         self.p = processor
         self.ds = val_ds
         self.refs = refs_map
-        self.fn = metrics_fn
         self.n = n_samples
         self.log_samples = log_samples
         self._trainer = None
@@ -78,7 +80,7 @@ class ICMetricsCallback(TrainerCallback):
         model = self._trainer.model.eval()
         ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))] if (self.n and self.n > 0) else self.ds
         preds, refs, imgs = do_eval_generate(model, self.p, ds, self.refs)
-        m = self.fn(preds, refs, imgs)
+        m = self.mc.compute_metrics(preds, refs, imgs)
         logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
         logs["eval_callback_ping"] = 1.0
         self._trainer.log(logs)
@@ -200,40 +202,6 @@ class DataCollatorQwenVL:
                 batch_out[k] = v
         return batch_out
 
-def load_compute_metrics(module_path):
-    if module_path:
-        path = os.path.abspath(module_path)
-        if os.path.isfile(path):
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("compute_metrics", path)
-            mod = importlib.util.module_from_spec(spec)
-            assert spec and spec.loader
-            spec.loader.exec_module(mod)
-            if hasattr(mod, "compute_metrics"):
-                return mod.compute_metrics
-    def fallback_metrics(preds, refs, image_paths=None):
-        out = {}
-        try:
-            import sacrebleu
-            max_k = max(len(r) for r in refs) if refs else 0
-            ref_sets = []
-            for k in range(max_k):
-                ref_sets.append([(r[k] if k < len(r) else r[-1]) for r in refs])
-            bleu = sacrebleu.corpus_bleu(preds, ref_sets, tokenize="intl")
-            out["SacreBLEU"] = float(bleu.score)
-        except Exception:
-            pass
-        try:
-            from bert_score import score as bert_score
-            first_refs = [r[0] if len(r) > 0 else "" for r in refs]
-            _, _, F1 = bert_score(preds, first_refs, lang="pl", rescale_with_baseline=True)
-            out["BERTScore_F1"] = float(F1.mean().item())
-        except Exception:
-            pass
-        out["Len_pred_tokens_avg"] = sum(len(p.split()) for p in preds) / max(1, len(preds))
-        return out
-    return fallback_metrics
-
 def do_eval_generate(model, processor, ds, refs_map):
     device = next(model.parameters()).device
     preds, refs, img_paths = [], [], []
@@ -280,7 +248,15 @@ def main():
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
 
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_PATH, dtype=dtype, **model_kwargs)
+    # 4 bit quantization
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
+
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_PATH, dtype=dtype, quantization_config=bnb_config, **model_kwargs)
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
 
     refs_map = {}
@@ -294,7 +270,6 @@ def main():
                 rs = rec.get("captions") or rec.get("references") or []
                 if k:
                     refs_map[k] = rs
-    metrics_fn = load_compute_metrics(COMPUTE_METRICS_PY if COMPUTE_METRICS_PY else "")
 
     lora_cfg = LoraConfig(
         r=16,
@@ -311,10 +286,9 @@ def main():
     val_ds   = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
     data_collator = DataCollatorQwenVL(processor=processor)
 
-    ic_cb = ICMetricsCallback(processor, val_ds, refs_map, metrics_fn,
-                          n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)
+    ic_cb = ICMetricsCallback(processor, val_ds, refs_map, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
-                          patience=3, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
+                          patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore_2"))
 
     training_args = TrainingArguments(
         output_dir=OUT_DIR,
@@ -345,7 +319,7 @@ def main():
         disable_tqdm=True,
         log_level="error",
         report_to="wandb",
-        run_name="qwen2.5-vl-finetune",)
+        run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics",)
     
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
@@ -372,7 +346,7 @@ def main():
 
     model.eval()
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map)
-    metrics = metrics_fn(preds, refs, img_paths)
+    metrics = mc.compute_metrics(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
 
     with open(mpath, "w", encoding="utf-8") as f:
