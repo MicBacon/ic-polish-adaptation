@@ -3,6 +3,7 @@ import json
 from PIL import Image
 import torch
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
 sys.path.append(os.path.dirname('/workspace/'))
 
 from shared.MetricComputer import MetricComputer

@@ -17,8 +17,8 @@ except Exception:
     qwen_process_vision_info = None
 
 MODEL_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
-TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_train.jsonl"
-VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_val.jsonl"
+TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_train.json"
+VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"
 IMAGE_ROOT = "/workspace/shared/data/flickr30k" 
 OUT_DIR = "out"
 EPOCHS = 10
@@ -35,10 +35,7 @@ USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. 
 MAX_NEW_TOKENS = 64
 NUM_BEAMS = 3
 TEMPERATURE = 0.0
-EVAL_REFS_JSON = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"        
-COMPUTE_METRICS_PY = "../shared/compute_metrics.py"
 
-# logowanie metryk 
 VAL_EVAL_N = 0
 WANDB_LOG_SAMPLES = 4
 
@@ -46,16 +43,6 @@ os.environ["WANDB_PROJECT"] = "magisterka"
 os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
 mc = MetricComputer()
-
-def read_jsonl(path):
-    out = []
-    with open(path, "r", encoding="utf-8") as f:
-        for ln in f:
-            ln = ln.strip()
-            if not ln:
-                continue
-            out.append(json.loads(ln))
-    return out
 
 def read_json(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -129,45 +116,46 @@ class EarlyStopByMetric(TrainerCallback):
                 control.should_training_stop = True
         return control
 
-class CaptionJsonlDataset(Dataset):
-    def __init__(self, jsonl_path, image_root=""):
-        self.samples = read_jsonl(jsonl_path)
-        self.json_dir = os.path.dirname(os.path.abspath(jsonl_path))
-        self.image_root = image_root
+def _find_image_path(image_id, image_root):
+    exts = ["jpg","jpeg","png"]
+    s = str(image_id)
+    cands = []
+    for ext in exts:
+        if image_root:
+            cands.append(os.path.join(image_root, f"{s}.{ext}"))
+            cands.append(os.path.join(image_root, "Images", f"{s}.{ext}"))
+    for p in cands:
+        if os.path.isfile(p):
+            return os.path.abspath(p)
+    return os.path.abspath(os.path.join(image_root, "Images", f"{s}.jpg"))
 
-    def _resolve(self, p):
-        p = str(p).strip()
-        if os.path.isabs(p) and os.path.isfile(p):
-            return p
-        cand = []
-        if self.image_root:
-            cand.append(os.path.join(self.image_root, p.lstrip("./")))
-            cand.append(os.path.join(self.image_root, "Images", os.path.basename(p)))
-        cand.append(os.path.join(self.json_dir, p))
-        cand.append(os.path.join(self.json_dir, "Images", os.path.basename(p)))
-        for c in cand:
-            if os.path.isfile(c):
-                return os.path.abspath(c)
-        return os.path.abspath(p)
+class CaptionJsonlDataset(Dataset):
+    def __init__(self, json_path, image_root=""):
+        raw = read_json(json_path)
+        self.samples = []
+        self.image_root = image_root
+        for rec in raw:
+            img_id = rec.get("image_id")
+            caps = rec.get("captions") or []
+            ip = _find_image_path(img_id, self.image_root)
+            for c in caps:
+                if isinstance(c, str) and c.strip():
+                    self.samples.append({"image_path": ip, "assistant_text": c.strip(), "image_id": str(img_id)})
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
         ex = self.samples[idx]
-        raw_path = ex["image"]
-        image_path = self._resolve(raw_path)
-        conv = ex["conversations"]
-        asst_text = conv[1]["value"]
         messages = [
             {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
             {"role": "user", "content": [
-                {"type": "image", "image": image_path},
+                {"type": "image", "image": ex["image_path"]},
                 {"type": "text", "text": USER_PROMPT},
             ]},
-            {"role": "assistant", "content": [{"type": "text", "text": asst_text}]},
+            {"role": "assistant", "content": [{"type": "text", "text": ex["assistant_text"]}]},
         ]
-        return {"messages": messages, "image_path": image_path, "assistant_text": asst_text, "image_id": image_id_from_path(image_path)}
+        return {"messages": messages, "image_path": ex["image_path"], "assistant_text": ex["assistant_text"], "image_id": ex["image_id"]}
 
 class DataCollatorQwenVL:
     def __init__(self, processor):
@@ -192,7 +180,6 @@ class DataCollatorQwenVL:
         attention_mask = proc_out["attention_mask"]
         labels = input_ids.clone()
         labels[attention_mask == 0] = -100
-
         mm_mask = proc_out.get("mm_token_mask", None)
         if mm_mask is not None:
             labels[mm_mask.bool()] = -100
@@ -204,13 +191,11 @@ class DataCollatorQwenVL:
                 labels[input_ids == image_id] = -100
             if video_id is not None:
                 labels[input_ids == video_id] = -100
-
         for i, messages in enumerate(all_messages):
             prompt_only = [messages[0], messages[1]]
             prompt_text = self.processor.apply_chat_template(
                 prompt_only, tokenize=False, add_generation_prompt=True
             )
-
             if qwen_process_vision_info is not None:
                 prompt_images, _ = qwen_process_vision_info(prompt_only)
             else:
@@ -218,7 +203,6 @@ class DataCollatorQwenVL:
                 for seg in messages[1]["content"]:
                     if seg.get("type") == "image":
                         prompt_images.append(seg["image"])
-
             pt = self.processor(text=[prompt_text], images=[prompt_images], padding=False, return_tensors="pt")
             prompt_len = min(pt["input_ids"].shape[1], labels.shape[1])
             labels[i, :prompt_len] = -100
@@ -271,28 +255,21 @@ def main():
     if not TRAIN_FILE or not VAL_FILE:
         return
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-
     model_kwargs = {"device_map": "auto"}
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
-
-    # 4 bit quantization
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
- 
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_PATH, quantization_config=bnb_config, **model_kwargs)
-
     model = prepare_model_for_kbit_training(model)
-    
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
-
     refs_map = {}
-    if EVAL_REFS_JSON:
-        raw = read_json(EVAL_REFS_JSON)
+    if VAL_FILE:
+        raw = read_json(VAL_FILE)
         if isinstance(raw, dict):
             refs_map = raw
         elif isinstance(raw, list):
@@ -301,7 +278,6 @@ def main():
                 rs = rec.get("captions") or rec.get("references") or []
                 if k:
                     refs_map[k] = rs
-
     lora_cfg = LoraConfig(
         r=16,
         lora_alpha=32,
@@ -310,17 +286,14 @@ def main():
         bias="none",
         task_type="CAUSAL_LM",
     )
-
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
     train_ds = CaptionJsonlDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
     val_ds   = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
     data_collator = DataCollatorQwenVL(processor=processor)
-
     ic_cb = ICMetricsCallback(processor, val_ds, refs_map, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
                           patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore_2"))
-
     training_args = TrainingArguments(
         output_dir=OUT_DIR,
         num_train_epochs=EPOCHS,
@@ -351,10 +324,8 @@ def main():
         log_level="error",
         report_to="wandb",
         run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics_quantization",)
-    
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
-
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -364,22 +335,17 @@ def main():
         compute_metrics=None,
         callbacks=[ic_cb, es_cb]
     )
-
     ic_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
-
     trainer.evaluate()
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
-
     print(OUT_DIR)
-
     model.eval()
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map)
     metrics = mc.compute_metrics(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
-
     with open(mpath, "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
     print(mpath)
