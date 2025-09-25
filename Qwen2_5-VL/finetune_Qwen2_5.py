@@ -427,7 +427,7 @@ def main():
         eval_accumulation_steps=2,
         include_inputs_for_metrics=False,
         disable_tqdm=True,
-        log_level="error",
+        log_level="info",
         report_to="wandb",
         run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics_quantization",)
     model.gradient_checkpointing_enable()
