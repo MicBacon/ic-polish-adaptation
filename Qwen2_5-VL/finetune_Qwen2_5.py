@@ -16,6 +16,9 @@ try:
 except Exception:
     qwen_process_vision_info = None
 
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
+
 MODEL_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
 TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_train.json"
 VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"
@@ -53,7 +56,10 @@ def image_id_from_path(p):
     return os.path.splitext(b)[0]
 
 class ICMetricsCallback(TrainerCallback):
-    def __init__(self, processor, val_ds, refs_map, n_samples=0, log_samples=0):
+    def __init__(self, processor, val_ds, refs_map, n_samples=0, log_samples=0,
+                 every=1,                 
+                 gen_bs=4,                
+                 fast_eval=True):         
         self.p = processor
         self.ds = val_ds
         self.refs = refs_map
@@ -61,27 +67,50 @@ class ICMetricsCallback(TrainerCallback):
         self.log_samples = log_samples
         self._trainer = None
         self.mc = mc
+        self.every = every
+        self.gen_bs = gen_bs
+        self.fast_eval = fast_eval
+        self._calls = 0
 
     def set_trainer(self, trainer):
         self._trainer = trainer
 
     def on_evaluate(self, args, state, control, **kwargs):
+        self._calls += 1
+        if (self._calls - 1) % self.every != 0:
+            self._trainer.log({"eval_callback_ping": 1.0})
+            return control
+
         if self._trainer is None or self._trainer.model is None:
             return control
+
         model = self._trainer.model.eval()
         ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))] if (self.n and self.n > 0) else self.ds
-        preds, refs, imgs = do_eval_generate(model, self.p, ds, self.refs)
+
+        num_beams = 1 if self.fast_eval else (NUM_BEAMS or 1)
+        max_new = 24 if self.fast_eval else MAX_NEW_TOKENS
+
+        preds, refs, imgs = do_eval_generate(
+            model, self.p, ds, self.refs,
+            num_beams=num_beams,
+            max_new_tokens=max_new,
+            temperature=0.0,
+            gen_bs=self.gen_bs,
+            use_cache=True
+        )
+
         m = self.mc.compute_metrics(preds, refs, imgs)
         logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
         logs["eval_callback_ping"] = 1.0
         self._trainer.log(logs)
         try:
-            wandb.log(logs, step=state.global_step)
-            if self.log_samples and self.log_samples > 0:
+            if getattr(state, "is_local_process_zero", True) and self.log_samples and self.log_samples > 0:
                 table = wandb.Table(columns=["image","pred","ref"])
                 for i in range(min(self.log_samples, len(preds))):
                     table.add_data(wandb.Image(imgs[i]), preds[i], refs[i][0] if refs[i] else "")
-                wandb.log({"eval_samples": table}, step=state.global_step)
+                wandb.log({ "eval_samples": table, **logs }, step=state.global_step)
+            else:
+                wandb.log(logs, step=state.global_step)
         except Exception:
             pass
         return control
@@ -129,6 +158,39 @@ def _find_image_path(image_id, image_root):
             return os.path.abspath(p)
     return os.path.abspath(os.path.join(image_root, "Images", f"{s}.jpg"))
 
+class CaptionDatasetOneCapPerImage(Dataset):
+    def __init__(self, json_path, image_root=""):
+        raw = read_json(json_path)
+        self.samples = []
+        self.image_root = image_root
+        for rec in raw:  # 1 rekord = 1 obraz z 5 captionami
+            img_id = rec.get("image_id")
+            caps = rec.get("captions") or []
+            if not caps: 
+                continue
+            ip = _find_image_path(img_id, self.image_root)
+            c = caps[0].strip()  # tylko 1 podpis
+            if c:
+                self.samples.append({"image_path": ip, "assistant_text": c, "image_id": str(img_id)})
+
+    def __len__(self):  return len(self.samples)
+    def __getitem__(self, idx):
+        ex = self.samples[idx]
+        messages = [
+            {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
+            {"role": "user", "content": [
+                {"type": "image", "image": ex["image_path"]},
+                {"type": "text",  "text": USER_PROMPT},
+            ]},
+            {"role": "assistant", "content": [{"type": "text", "text": ex["assistant_text"]}]},
+        ]
+        return {
+            "messages": messages,
+            "image_path": ex["image_path"],
+            "assistant_text": ex["assistant_text"],
+            "image_id": ex["image_id"]
+        }
+
 class CaptionJsonlDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = read_json(json_path)
@@ -160,96 +222,136 @@ class CaptionJsonlDataset(Dataset):
 class DataCollatorQwenVL:
     def __init__(self, processor):
         self.processor = processor
+        self.tok = processor.tokenizer
+
     def __call__(self, batch):
-        texts, all_messages, images = [], [], []
+        texts, images, all_messages = [], [], []
+
         for item in batch:
             messages = item["messages"]
+
             if qwen_process_vision_info is not None:
                 image_inputs, _ = qwen_process_vision_info(messages)
             else:
-                image_inputs = []
-                for seg in messages[1]["content"]:
-                    if seg.get("type") == "image":
-                        image_inputs.append(seg["image"])
-            text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+                image_inputs = [seg["image"] for seg in messages[1]["content"] if seg.get("type") == "image"]
+
+            text = self.processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=False
+            )
+
             texts.append(text)
-            all_messages.append(messages)
             images.append(image_inputs)
+            all_messages.append(messages)
+
         proc_out = self.processor(text=texts, images=images, padding=True, return_tensors="pt")
         input_ids = proc_out["input_ids"]
         attention_mask = proc_out["attention_mask"]
+
         labels = input_ids.clone()
         labels[attention_mask == 0] = -100
+
         mm_mask = proc_out.get("mm_token_mask", None)
         if mm_mask is not None:
             labels[mm_mask.bool()] = -100
         else:
-            tok = self.processor.tokenizer
-            image_id = getattr(tok, "image_token_id", None)
-            video_id = getattr(tok, "video_token_id", None)
+            image_id = getattr(self.tok, "image_token_id", None)
+            video_id = getattr(self.tok, "video_token_id", None)
             if image_id is not None:
                 labels[input_ids == image_id] = -100
             if video_id is not None:
                 labels[input_ids == video_id] = -100
-        for i, messages in enumerate(all_messages):
-            prompt_only = [messages[0], messages[1]]
-            prompt_text = self.processor.apply_chat_template(
+
+        prompt_texts = []
+        for m in all_messages:
+            prompt_only = [m[0], m[1]]
+            prompt_texts.append(self.processor.apply_chat_template(
                 prompt_only, tokenize=False, add_generation_prompt=True
-            )
-            if qwen_process_vision_info is not None:
-                prompt_images, _ = qwen_process_vision_info(prompt_only)
-            else:
-                prompt_images = []
-                for seg in messages[1]["content"]:
-                    if seg.get("type") == "image":
-                        prompt_images.append(seg["image"])
-            pt = self.processor(text=[prompt_text], images=[prompt_images], padding=False, return_tensors="pt")
-            prompt_len = min(pt["input_ids"].shape[1], labels.shape[1])
-            labels[i, :prompt_len] = -100
+            ))
+
+        enc = self.tok(prompt_texts, add_special_tokens=False)
+        prompt_lens = [len(x) for x in enc["input_ids"]]
+        max_len = labels.shape[1]
+        for i, L in enumerate(prompt_lens):
+            labels[i, :min(L, max_len)] = -100
+
         batch_out = {"input_ids": input_ids, "labels": labels, "attention_mask": attention_mask}
         for k, v in proc_out.items():
-            if k in batch_out:
-                continue
-            if isinstance(v, torch.Tensor):
+            if k not in batch_out and isinstance(v, torch.Tensor):
                 batch_out[k] = v
         return batch_out
 
-def do_eval_generate(model, processor, ds, refs_map):
+
+def do_eval_generate(
+    model,
+    processor,
+    ds,
+    refs_map,
+    num_beams=1,                
+    max_new_tokens=24,           
+    temperature=0.0,
+    gen_bs=4,                    
+    use_cache=True               
+):
     device = next(model.parameters()).device
+    prev_cache = getattr(model.config, "use_cache", None)
+    if use_cache:
+        model.config.use_cache = True
+
     preds, refs, img_paths = [], [], []
-    for ex in ds:
-        messages = [
-            {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
-            {"role": "user", "content": [
-                {"type": "image", "image": ex["image_path"]},
-                {"type": "text", "text": USER_PROMPT},
-            ]},
-        ]
-        text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+    model.eval()
+
+    def _extract_images(messages):
         if qwen_process_vision_info is not None:
-            images, _ = qwen_process_vision_info(messages)
-        else:
-            images = [[ex["image_path"]]]
-        inputs = processor(text=[text], images=images, return_tensors="pt").to(device)
-        with torch.no_grad():
+            imgs, _ = qwen_process_vision_info(messages)
+            return imgs
+        return [seg["image"] for seg in messages[1]["content"] if seg.get("type") == "image"]
+
+    for i in range(0, len(ds), gen_bs):
+        chunk = ds[i:i+gen_bs]
+
+        texts, batch_images = [], []
+        for ex in chunk:
+            messages = [
+                {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
+                {"role": "user", "content": [
+                    {"type": "image", "image": ex["image_path"]},
+                    {"type": "text",  "text": USER_PROMPT},
+                ]},
+            ]
+            text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+            texts.append(text)
+            batch_images.append(_extract_images(messages))
+
+        inputs = processor(text=texts, images=batch_images, padding=True, return_tensors="pt")
+        input_lens = inputs["attention_mask"].sum(-1)
+
+        inputs = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k, v in inputs.items()}
+        with torch.inference_mode():
             out_ids = model.generate(
                 **inputs,
-                max_new_tokens=MAX_NEW_TOKENS,
-                do_sample=(TEMPERATURE > 0.0),
-                temperature=(TEMPERATURE if TEMPERATURE > 0.0 else None),
-                num_beams=(NUM_BEAMS if NUM_BEAMS and NUM_BEAMS > 1 and TEMPERATURE == 0.0 else 1),
+                max_new_tokens=max_new_tokens,
+                do_sample=(temperature > 0.0),
+                temperature=(temperature if temperature > 0.0 else None),
+                num_beams=num_beams,
                 pad_token_id=processor.tokenizer.eos_token_id,
+                use_cache=use_cache,
             )
-        in_len = inputs["input_ids"].shape[1]
-        gen_ids = out_ids[:, in_len:]
-        pred = processor.batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
-        preds.append(pred)
-        img_paths.append(ex["image_path"])
-        k = ex["image_id"]
-        rs = refs_map.get(k) or [ex["assistant_text"]]
-        rs = [r.strip() for r in rs if isinstance(r, str)] or [""]
-        refs.append(rs)
+
+        for j, ex in enumerate(chunk):
+            start = input_lens[j].item()
+            gen_ids = out_ids[j, start:]
+            pred = processor.batch_decode(gen_ids.unsqueeze(0), skip_special_tokens=True)[0].strip()
+            preds.append(pred)
+            img_paths.append(ex["image_path"])
+            k = ex["image_id"]
+            rs = refs_map.get(k) or [ex["assistant_text"]]
+            rs = [r.strip() for r in rs if isinstance(r, str)] or [""]
+            refs.append(rs)
+
+    if prev_cache is not None:
+        model.config.use_cache = prev_cache
     return preds, refs, img_paths
+
 
 def main():
     if not TRAIN_FILE or not VAL_FILE:
@@ -289,9 +391,11 @@ def main():
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
     train_ds = CaptionJsonlDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
-    val_ds   = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
+    val_ds_full = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
+    val_ds_loss = CaptionDatasetOneCapPerImage(VAL_FILE, image_root=IMAGE_ROOT)
     data_collator = DataCollatorQwenVL(processor=processor)
-    ic_cb = ICMetricsCallback(processor, val_ds, refs_map, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES)
+    ic_cb = ICMetricsCallback(processor, val_ds_full, refs_map, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES,
+    every=2, gen_bs=4, fast_eval=True )
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
                           patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore_2"))
     training_args = TrainingArguments(
@@ -314,6 +418,8 @@ def main():
         save_total_limit=2,
         bf16=torch.cuda.is_available(),
         fp16=False,
+        dataloader_num_workers=4,
+        dataloader_persistent_workers=True,
         dataloader_pin_memory=True,
         remove_unused_columns=False,
         max_grad_norm=1.0,
@@ -330,7 +436,7 @@ def main():
         model=model,
         args=training_args,
         train_dataset=train_ds,
-        eval_dataset=val_ds,
+        eval_dataset=val_ds_loss,
         data_collator=data_collator,
         compute_metrics=None,
         callbacks=[ic_cb, es_cb]
@@ -343,7 +449,7 @@ def main():
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
     model.eval()
-    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map)
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds_full, refs_map)
     metrics = mc.compute_metrics(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
     with open(mpath, "w", encoding="utf-8") as f:
