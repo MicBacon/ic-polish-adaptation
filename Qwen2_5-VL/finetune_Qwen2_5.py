@@ -277,13 +277,24 @@ def do_eval_generate(
     processor,
     ds,
     refs_map,
-    num_beams=1,                
-    max_new_tokens=24,           
+    num_beams=1,
+    max_new_tokens=24,
     temperature=0.0,
-    gen_bs=4,                    
-    use_cache=True               
+    gen_bs=4,
+    use_cache=True
 ):
+    import contextlib
+    import torch
+
     device = next(model.parameters()).device
+
+    prev_attn = getattr(model.config, "attn_implementation", None)
+    try:
+        if prev_attn == "flash_attention_2":
+            model.config.attn_implementation = "eager"
+    except Exception:
+        pass
+
     prev_cache = getattr(model.config, "use_cache", None)
     if use_cache:
         model.config.use_cache = True
@@ -297,8 +308,11 @@ def do_eval_generate(
             return imgs
         return [seg["image"] for seg in messages[1]["content"] if seg.get("type") == "image"]
 
+    autocast_ctx = torch.cuda.amp.autocast if device.type == "cuda" else contextlib.nullcontext
+    autocast_kwargs = {"dtype": torch.bfloat16} if device.type == "cuda" else {}
+
     for i in range(0, len(ds), gen_bs):
-        chunk = ds[i:i+gen_bs]
+        chunk = ds[i:i + gen_bs]
 
         texts, batch_images = [], []
         for ex in chunk:
@@ -313,23 +327,41 @@ def do_eval_generate(
             texts.append(text)
             batch_images.append(_extract_images(messages))
 
-        inputs = processor(text=texts, images=batch_images, padding=True, return_tensors="pt")
-        input_lens = inputs["attention_mask"].sum(-1)
+        proc_inputs = processor(text=texts, images=batch_images, padding=True, return_tensors="pt")
+        input_lens = proc_inputs["attention_mask"].sum(-1)
 
-        inputs = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k, v in inputs.items()}
+        # na GPU
+        inputs = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k, v in proc_inputs.items()}
+
         with torch.inference_mode():
-            out_ids = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=(temperature > 0.0),
-                temperature=(temperature if temperature > 0.0 else None),
-                num_beams=num_beams,
-                pad_token_id=processor.tokenizer.eos_token_id,
-                use_cache=use_cache,
-            )
+            try:
+                with autocast_ctx(**autocast_kwargs):
+                    out_ids = model.generate(
+                        **inputs,
+                        max_new_tokens=max_new_tokens,
+                        do_sample=(temperature > 0.0),
+                        temperature=(temperature if temperature > 0.0 else None),
+                        num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
+                        pad_token_id=processor.tokenizer.eos_token_id,
+                        use_cache=use_cache,
+                    )
+            except Exception:
+                try:
+                    model.config.attn_implementation = "eager"
+                except Exception:
+                    pass
+                out_ids = model.generate(
+                    **inputs,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=(temperature > 0.0),
+                    temperature=(temperature if temperature > 0.0 else None),
+                    num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
+                    pad_token_id=processor.tokenizer.eos_token_id,
+                    use_cache=use_cache,
+                )
 
         for j, ex in enumerate(chunk):
-            start = input_lens[j].item()
+            start = int(input_lens[j].item())
             gen_ids = out_ids[j, start:]
             pred = processor.batch_decode(gen_ids.unsqueeze(0), skip_special_tokens=True)[0].strip()
             preds.append(pred)
@@ -341,7 +373,14 @@ def do_eval_generate(
 
     if prev_cache is not None:
         model.config.use_cache = prev_cache
+    try:
+        if prev_attn is not None:
+            model.config.attn_implementation = prev_attn
+    except Exception:
+        pass
+
     return preds, refs, img_paths
+
 
 
 def main():
@@ -437,7 +476,10 @@ def main():
     )
     rnd_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
-    trainer.train()
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map,
+        num_beams=1, max_new_tokens=24, gen_bs=16, use_cache=True
+    )
+    trainer.train(resume_from_checkpoint="out/checkpoint-1000")
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
