@@ -308,11 +308,23 @@ def do_eval_generate(
             return imgs
         return [seg["image"] for seg in messages[1]["content"] if seg.get("type") == "image"]
 
-    autocast_ctx = torch.cuda.amp.autocast if device.type == "cuda" else contextlib.nullcontext
-    autocast_kwargs = {"dtype": torch.bfloat16} if device.type == "cuda" else {}
+    if device.type == "cuda":
+        try:
+            autocast_ctx = torch.autocast
+            autocast_kwargs = {"device_type": "cuda", "dtype": torch.bfloat16}
+        except TypeError:
+            autocast_ctx = torch.cuda.amp.autocast
+            autocast_kwargs = {"dtype": torch.bfloat16}
+    else:
+        autocast_ctx = contextlib.nullcontext
+        autocast_kwargs = {}
 
-    for i in range(0, len(ds), gen_bs):
-        chunk = ds[i:i + gen_bs]
+    N = len(ds)
+    indices = list(range(N))
+
+    for off in range(0, N, gen_bs):
+        idx_chunk = indices[off:off + gen_bs]
+        chunk = [ds[j] for j in idx_chunk]
 
         texts, batch_images = [], []
         for ex in chunk:
@@ -329,8 +341,6 @@ def do_eval_generate(
 
         proc_inputs = processor(text=texts, images=batch_images, padding=True, return_tensors="pt")
         input_lens = proc_inputs["attention_mask"].sum(-1)
-
-        # na GPU
         inputs = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k, v in proc_inputs.items()}
 
         with torch.inference_mode():
@@ -367,7 +377,7 @@ def do_eval_generate(
             preds.append(pred)
             img_paths.append(ex["image_path"])
             k = ex["image_id"]
-            rs = refs_map.get(k) or [ex["assistant_text"]]
+            rs = refs_map.get(k) or [ex.get("assistant_text", "")]
             rs = [r.strip() for r in rs if isinstance(r, str)] or [""]
             refs.append(rs)
 
@@ -380,6 +390,7 @@ def do_eval_generate(
         pass
 
     return preds, refs, img_paths
+
 
 
 
