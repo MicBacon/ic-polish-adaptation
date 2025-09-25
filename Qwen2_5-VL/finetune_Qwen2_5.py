@@ -26,7 +26,7 @@ IMAGE_ROOT = "/workspace/shared/data/flickr30k"
 OUT_DIR = "out"
 EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
-PER_DEVICE_EVAL_BATCH_SIZE = 2
+PER_DEVICE_EVAL_BATCH_SIZE = 4
 GRAD_ACCUM = 8
 LR = 2e-4
 WARMUP_RATIO = 0.05
@@ -395,7 +395,7 @@ def main():
     val_ds_loss = CaptionDatasetOneCapPerImage(VAL_FILE, image_root=IMAGE_ROOT)
     data_collator = DataCollatorQwenVL(processor=processor)
     ic_cb = ICMetricsCallback(processor, val_ds_full, refs_map, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES,
-    every=2, gen_bs=4, fast_eval=True )
+    every=2, gen_bs=8, fast_eval=True )
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
                           patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore_2"))
     training_args = TrainingArguments(
@@ -449,7 +449,7 @@ def main():
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
     model.eval()
-    preds, refs, img_paths = do_eval_generate(model, processor, val_ds_full, refs_map)
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds_loss, refs_map)
     metrics = mc.compute_metrics(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
     with open(mpath, "w", encoding="utf-8") as f:
