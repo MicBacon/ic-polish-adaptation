@@ -27,8 +27,10 @@ OUTPUT_PREDICTIONS = "predictions.jsonl"
 OUTPUT_METRICS = "metrics.json"
 MAX_SAMPLES = 0
 SAMPLE_INDEX = -1
-SYSTEM_PROMPT = "You are an expert in image captioning. Write clearly and without hallucinating."
-USER_PROMPT = "Describe this image in one sentence. Consider objects, relations and background. Do not guess."
+#SYSTEM_PROMPT = "You are an expert in image captioning. Write clearly and without hallucinating."
+#USER_PROMPT = "Describe this image in one sentence. Consider objects, relations and background. Do not guess."
+SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
+USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
 
 def fallback_process_vision_info(messages):
     images_batch = []
