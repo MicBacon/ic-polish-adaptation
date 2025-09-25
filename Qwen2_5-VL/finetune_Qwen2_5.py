@@ -1,7 +1,8 @@
 import os, sys
 import json
 import torch
-from torch.utils.data import Dataset
+import random
+from torch.utils.data import Dataset, Subset
 from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallback
 from transformers import Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -26,11 +27,11 @@ IMAGE_ROOT = "/workspace/shared/data/flickr30k"
 OUT_DIR = "out"
 EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
-PER_DEVICE_EVAL_BATCH_SIZE = 4
+PER_DEVICE_EVAL_BATCH_SIZE = 8
 GRAD_ACCUM = 8
 LR = 2e-4
 WARMUP_RATIO = 0.05
-EVAL_STEPS = 500
+EVAL_STEPS = 1500
 SAVE_STEPS = 500
 USE_FLASH_ATTN = True
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
@@ -54,63 +55,53 @@ def read_json(path):
 def image_id_from_path(p):
     b = os.path.basename(p)
     return os.path.splitext(b)[0]
-
-class ICMetricsCallback(TrainerCallback):
-    def __init__(self, processor, val_ds, refs_map, n_samples=0, log_samples=0,
-                 every=1,                 
-                 gen_bs=4,                
-                 fast_eval=True):         
+    
+class RandomSubsetEvalCallback(TrainerCallback):
+    def __init__(self, base_eval_ds, refs_map, processor,
+                 n_samples=50, every_steps=1500, gen_bs=16, fast_eval=True, seed=1337):
+        self.base = base_eval_ds           # np. val_ds_loss (1 wpis/obraz)
+        self.refs_map = refs_map
         self.p = processor
-        self.ds = val_ds
-        self.refs = refs_map
         self.n = n_samples
-        self.log_samples = log_samples
-        self._trainer = None
-        self.mc = mc
-        self.every = every
+        self.every = every_steps
         self.gen_bs = gen_bs
-        self.fast_eval = fast_eval
-        self._calls = 0
+        self.fast = fast_eval
+        self.seed = seed
+        self._trainer = None
 
     def set_trainer(self, trainer):
         self._trainer = trainer
 
-    def on_evaluate(self, args, state, control, **kwargs):
-        self._calls += 1
-        if (self._calls - 1) % self.every != 0:
-            self._trainer.log({"eval_callback_ping": 1.0})
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step == 0 or state.global_step % self.every != 0:
             return control
-
         if self._trainer is None or self._trainer.model is None:
             return control
 
-        model = self._trainer.model.eval()
-        ds = [self.ds[i] for i in range(min(self.n, len(self.ds)))] if (self.n and self.n > 0) else self.ds
+        rng = random.Random(self.seed + int(state.global_step))
+        idxs = rng.sample(range(len(self.base)), min(self.n, len(self.base)))
 
-        num_beams = 1 if self.fast_eval else (NUM_BEAMS or 1)
-        max_new = 24 if self.fast_eval else MAX_NEW_TOKENS
+        subset = Subset(self.base, idxs)
+        loss_metrics = self._trainer.evaluate(eval_dataset=subset, metric_key_prefix="eval")  # nie blokuje treningu
+
+        ds_list = [self.base[i] for i in idxs]
+        num_beams = 1 if self.fast else (NUM_BEAMS or 1)
+        max_new = 16 if self.fast else MAX_NEW_TOKENS
 
         preds, refs, imgs = do_eval_generate(
-            model, self.p, ds, self.refs,
-            num_beams=num_beams,
-            max_new_tokens=max_new,
-            temperature=0.0,
-            gen_bs=self.gen_bs,
-            use_cache=True
+            self._trainer.model, self.p, ds_list, self.refs_map,
+            num_beams=num_beams, max_new_tokens=max_new,
+            temperature=0.0, gen_bs=self.gen_bs, use_cache=True
         )
 
-        m = self.mc.compute_metrics(preds, refs, imgs)
-        logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
-        logs["eval_callback_ping"] = 1.0
+        m = mc.compute_metrics_fast(preds, refs, imgs)
+
+        logs = {**{f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))},
+                **{k: float(v) for k, v in loss_metrics.items() if isinstance(v, (int, float))},
+                "eval_N_samples": float(len(idxs))}
         self._trainer.log(logs)
         try:
-            if getattr(state, "is_local_process_zero", True) and self.log_samples and self.log_samples > 0:
-                table = wandb.Table(columns=["image","pred","ref"])
-                for i in range(min(self.log_samples, len(preds))):
-                    table.add_data(wandb.Image(imgs[i]), preds[i], refs[i][0] if refs[i] else "")
-                wandb.log({ "eval_samples": table, **logs }, step=state.global_step)
-            else:
-                wandb.log(logs, step=state.global_step)
+            wandb.log(logs, step=state.global_step)
         except Exception:
             pass
         return control
@@ -163,13 +154,13 @@ class CaptionDatasetOneCapPerImage(Dataset):
         raw = read_json(json_path)
         self.samples = []
         self.image_root = image_root
-        for rec in raw:  # 1 rekord = 1 obraz z 5 captionami
+        for rec in raw:
             img_id = rec.get("image_id")
             caps = rec.get("captions") or []
             if not caps: 
                 continue
             ip = _find_image_path(img_id, self.image_root)
-            c = caps[0].strip()  # tylko 1 podpis
+            c = caps[0].strip()
             if c:
                 self.samples.append({"image_path": ip, "assistant_text": c, "image_id": str(img_id)})
 
@@ -391,11 +382,16 @@ def main():
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
     train_ds = CaptionJsonlDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
-    val_ds_full = CaptionJsonlDataset(VAL_FILE, image_root=IMAGE_ROOT)
-    val_ds_loss = CaptionDatasetOneCapPerImage(VAL_FILE, image_root=IMAGE_ROOT)
+    val_ds = CaptionDatasetOneCapPerImage(VAL_FILE, image_root=IMAGE_ROOT)
+    rnd_cb = RandomSubsetEvalCallback(
+        base_eval_ds=val_ds,
+        refs_map=refs_map,
+        processor=processor,
+        n_samples=50,     
+        every_steps=EVAL_STEPS,
+        gen_bs=16, fast_eval=True, seed=1337
+    )
     data_collator = DataCollatorQwenVL(processor=processor)
-    ic_cb = ICMetricsCallback(processor, val_ds_full, refs_map, n_samples=VAL_EVAL_N, log_samples=WANDB_LOG_SAMPLES,
-    every=2, gen_bs=8, fast_eval=True )
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
                           patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore_2"))
     training_args = TrainingArguments(
@@ -408,9 +404,8 @@ def main():
         lr_scheduler_type="cosine",
         warmup_ratio=WARMUP_RATIO,
         logging_steps=50,
-        eval_strategy="steps",
         save_strategy="steps",
-        load_best_model_at_end=True,
+        load_best_model_at_end=False,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         eval_steps=EVAL_STEPS,
@@ -430,18 +425,17 @@ def main():
         log_level="info",
         report_to="wandb",
         run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics_quantization",)
-    model.gradient_checkpointing_enable()
+    #model.gradient_checkpointing_enable()
     model.config.use_cache = False
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_ds,
-        eval_dataset=val_ds_loss,
         data_collator=data_collator,
         compute_metrics=None,
-        callbacks=[ic_cb, es_cb]
+        callbacks=[rnd_cb, es_cb]
     )
-    ic_cb.set_trainer(trainer)
+    rnd_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
     trainer.evaluate()
     trainer.train()
@@ -449,8 +443,10 @@ def main():
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
     model.eval()
-    preds, refs, img_paths = do_eval_generate(model, processor, val_ds_loss, refs_map)
-    metrics = mc.compute_metrics(preds, refs, img_paths)
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map,
+        num_beams=1, max_new_tokens=24, gen_bs=16, use_cache=True
+    )
+    metrics = mc.compute_metrics_fast(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
     with open(mpath, "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
