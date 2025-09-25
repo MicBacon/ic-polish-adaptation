@@ -32,11 +32,11 @@ SAVE_STEPS = 500
 USE_FLASH_ATTN = True
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
 USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
-MAX_NEW_TOKENS = 64
+MAX_NEW_TOKENS = 32
 NUM_BEAMS = 3
 TEMPERATURE = 0.0
 
-VAL_EVAL_N = 0
+VAL_EVAL_N = 50
 WANDB_LOG_SAMPLES = 4
 
 os.environ["WANDB_PROJECT"] = "magisterka"

@@ -123,9 +123,9 @@ class MetricComputer:
     def __init__(
         self,
         bert_model_type: str = "xlm-roberta-large",
-        bert_lang: Optional[str] = None,
+        bert_lang: Optional[str] = "pl",
         bert_rescale_with_baseline: bool = False,
-        bert_idf: bool = True,
+        bert_idf: bool = False,
         bert_device: Optional[str] = None,
         clip_model_name: str = "xlm-roberta-base-ViT-B-32",
         clip_pretrained: str = "laion5b_s13b_b90k",
