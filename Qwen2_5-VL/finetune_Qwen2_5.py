@@ -437,7 +437,6 @@ def main():
     )
     rnd_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
-    trainer.evaluate()
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
