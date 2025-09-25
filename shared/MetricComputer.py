@@ -19,7 +19,7 @@ def as_coco_dict(preds, refs):
         res[i] = [p]
     return gts, res
 
-def eval_coco_metrics(preds, refs, img_paths):
+def eval_coco_metrics(preds, refs, fast=False):
     out = {}
     try:
         try:
@@ -29,14 +29,6 @@ def eval_coco_metrics(preds, refs, img_paths):
             score, _ = scorer.compute_score(gts, res)
             for i, s in enumerate(score, start=1):
                 out[f"Bleu_{i}"] = float(s)
-        except Exception:
-            pass
-        try:
-            from pycocoevalcap.meteor.meteor import Meteor
-            gts, res = as_coco_dict(preds, refs)
-            scorer = Meteor()
-            score, _ = scorer.compute_score(gts, res)
-            out["METEOR"] = float(score)
         except Exception:
             pass
         try:
@@ -55,25 +47,34 @@ def eval_coco_metrics(preds, refs, img_paths):
             out["CIDEr"] = float(score)
         except Exception:
             pass
-        try:
-            from pycocoevalcap.spice.spice import Spice
-            gts, res = as_coco_dict(preds, refs)
-            scorer = Spice()
-            score, _ = scorer.compute_score(gts, res)
-            if isinstance(score, (int, float)):
-                out["SPICE"] = float(score)
-            else:
-                try:
-                    vals = []
-                    for d in score:
-                        if isinstance(d, dict) and "All" in d and "f" in d["All"]:
-                            vals.append(float(d["All"]["f"]))
-                    if vals:
-                        out["SPICE"] = sum(vals) / len(vals)
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        if(not fast):
+            try:
+                from pycocoevalcap.meteor.meteor import Meteor
+                gts, res = as_coco_dict(preds, refs)
+                scorer = Meteor()
+                score, _ = scorer.compute_score(gts, res)
+                out["METEOR"] = float(score)
+            except Exception:
+                pass
+            try:
+                from pycocoevalcap.spice.spice import Spice
+                gts, res = as_coco_dict(preds, refs)
+                scorer = Spice()
+                score, _ = scorer.compute_score(gts, res)
+                if isinstance(score, (int, float)):
+                    out["SPICE"] = float(score)
+                else:
+                    try:
+                        vals = []
+                        for d in score:
+                            if isinstance(d, dict) and "All" in d and "f" in d["All"]:
+                                vals.append(float(d["All"]["f"]))
+                        if vals:
+                            out["SPICE"] = sum(vals) / len(vals)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
     except Exception:
         pass
     return out
@@ -197,7 +198,7 @@ class MetricComputer:
         preds, refs = normalize_lists(predictions, references)
         results: Dict[str, Any] = {}
 
-        results.update(eval_coco_metrics(preds, refs, image_paths_for_clip))
+        results.update(eval_coco_metrics(preds, refs))
 
         results.update(eval_sacrebleu(preds, refs))
 
@@ -212,6 +213,29 @@ class MetricComputer:
         results["N_samples"] = float(len(preds))
         return results
 
+    def compute_metrics_fast(
+        self,
+        predictions: Sequence[str],
+        references: Sequence[Union[str, Sequence[str]]],
+        image_paths_for_clip: Optional[Sequence[str]] = None,
+    ) -> Dict[str, Any]:
+        preds, refs = normalize_lists(predictions, references)
+        results: Dict[str, Any] = {}
+
+        results.update(eval_coco_metrics(preds, refs, fast=True))
+
+        results.update(eval_sacrebleu(preds, refs))
+
+        results.update(self._eval_bertscore_cached(preds, refs))
+
+        if image_paths_for_clip:
+            results.update(self._eval_clipscore_cached(image_paths_for_clip, preds))
+        else:
+            print("No image paths, skipping CLIPScore")
+
+        results.update(basic_lengths(preds))
+        results["N_samples"] = float(len(preds))
+        return results
 
     def _eval_bertscore_cached(self, preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
         out: Dict[str, float] = {}
