@@ -279,7 +279,7 @@ class flickr30k_dataset(Dataset):
             filename = each["image_id"]
             captions = each["captions"]
 
-            image_path = os.path.join(self.root_path, "Images", filename, '.jpg')
+            image_path = os.path.join(self.root_path, "Images", filename + '.jpg')
             gold_caption = []
 
             for capt in captions:
