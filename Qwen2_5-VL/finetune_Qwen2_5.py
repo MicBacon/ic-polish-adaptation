@@ -270,6 +270,27 @@ class DataCollatorQwenVL:
             if k not in batch_out and isinstance(v, torch.Tensor):
                 batch_out[k] = v
         return batch_out
+    
+def load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs):
+    attn_order = (["flash_attention_2", "sdpa", "eager"]
+                  if model_kwargs.get("attn_implementation", None) == "flash_attention_2"
+                  else ["sdpa", "eager"])
+    last_err = None
+    for impl in attn_order:
+        try:
+            print(f"Trying attn_implementation='{impl}'")
+            mk = dict(model_kwargs)
+            mk["attn_implementation"] = impl
+            model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+                MODEL_PATH, quantization_config=bnb_config, **mk
+            )
+            print(f"Loaded Qwen with attn_implementation='{impl}'")
+            return model
+        except Exception as e:
+            print(f"Failed attn_implementation='{impl}': {e}")
+            last_err = e
+    raise last_err
+
 
 
 def do_eval_generate(
@@ -407,7 +428,7 @@ def main():
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(MODEL_PATH, quantization_config=bnb_config, **model_kwargs)
+    model = load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs)
     model = prepare_model_for_kbit_training(model)
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
     refs_map = {}
