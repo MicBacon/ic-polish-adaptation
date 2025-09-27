@@ -1,5 +1,74 @@
-from typing import List, Sequence, Optional, Dict, Any, Union
-import math
+from typing import List, Sequence, Optional, Dict, Any, Union, Tuple
+from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+import math, os
+
+tokenizer = PTBTokenizer()
+
+def _norm_img_id(x: str) -> str:
+    x = str(x).strip()
+    x = os.path.basename(x)
+    return x.split('.')[0] if '.' in x else x
+
+def _id_to_path(stem: str, image_root: str, exts=("jpg","jpeg","png")) -> str:
+    for ext in exts:
+        p = os.path.join(image_root, f"{stem}.{ext}")
+        if os.path.isfile(p):
+            return p
+    return ""
+
+def align_by_id(
+    pred_rows: list,
+    ref_rows: list,
+    image_root: str = "",
+    id_key_pred: str = None, 
+    id_key_ref:  str = "image_id",
+    cap_key_pred: str = "prediction",
+    caps_key_ref: str = None
+) -> Tuple[list, list, list, list]:
+    ref_map = {}
+    if caps_key_ref is None and len(ref_rows) > 0:
+        if "captions" in ref_rows[0]:
+            caps_key_ref = "captions"
+        elif "references" in ref_rows[0]:
+            caps_key_ref = "references"
+        elif "refs" in ref_rows[0]:
+            caps_key_ref = "refs"
+        else:
+            raise KeyError("Nie znaleziono pola z listą referencji w rekordach referencyjnych.")
+    for r in ref_rows:
+        kid = _norm_img_id(r.get(id_key_ref, r.get("id", "")))
+        caps = r.get(caps_key_ref, [])
+        if kid and caps:
+            ref_map[kid] = [str(c).strip() for c in caps if isinstance(c, str)]
+
+    if id_key_pred is None and len(pred_rows) > 0:
+        id_key_pred = "image_id" if "image_id" in pred_rows[0] else "id"
+
+    preds, refs, img_paths, ids = [], [], [], []
+    missing_ref, missing_img = 0, 0
+
+    for pr in pred_rows:
+        kid = _norm_img_id(pr.get(id_key_pred, pr.get("id", "")))
+        if not kid:
+            continue
+        if kid not in ref_map:
+            missing_ref += 1
+            continue
+        hyp = pr.get(cap_key_pred, "")
+        if not isinstance(hyp, str):
+            hyp = ""
+        preds.append(hyp.strip())
+        refs.append(ref_map[kid])
+        ids.append(kid)
+
+        p = _id_to_path(kid, image_root) if image_root else ""
+        if not p:
+            missing_img += 1
+        img_paths.append(p)
+
+    print(f"[align_by_id] used={len(preds)}  missing_ref={missing_ref}  missing_img={missing_img}")
+    return preds, refs, img_paths, ids
+
 
 def normalize_lists(predictions, references):
     n = min(len(predictions), len(references))
@@ -15,86 +84,75 @@ def normalize_lists(predictions, references):
 def as_coco_dict(preds, refs):
     gts, res = {}, {}
     for i, (p, rset) in enumerate(zip(preds, refs)):
-        gts[i] = rset
-        res[i] = [p]
+        gg = []
+        if rset:
+            for s in rset:
+                ss = (s if isinstance(s, str) else "")
+                gg.append({"caption": ss.strip()})
+        else:
+            gg.append({"caption": ""})
+        gts[i] = gg
+
+        pp = (p if isinstance(p, str) else "")
+        res[i] = [{"caption": pp.strip()}]
     return gts, res
+
 
 def eval_coco_metrics(preds, refs, fast=False):
     out = {}
+    gts, res = as_coco_dict(preds, refs)
+    gts = tokenizer.tokenize(gts); res = tokenizer.tokenize(res)
     try:
-        try:
-            from pycocoevalcap.bleu.bleu import Bleu
-            gts, res = as_coco_dict(preds, refs)
-            scorer = Bleu(n=4)
-            score, _ = scorer.compute_score(gts, res)
-            for i, s in enumerate(score, start=1):
-                out[f"Bleu_{i}"] = float(s)
-        except Exception:
-            pass
-        try:
-            from pycocoevalcap.rouge.rouge import Rouge
-            gts, res = as_coco_dict(preds, refs)
-            scorer = Rouge()
-            score, _ = scorer.compute_score(gts, res)
-            out["ROUGE_L"] = float(score)
-        except Exception:
-            pass
-        try:
-            from pycocoevalcap.cider.cider import Cider
-            gts, res = as_coco_dict(preds, refs)
-            scorer = Cider()
-            score, _ = scorer.compute_score(gts, res)
-            out["CIDEr"] = float(score)
-        except Exception:
-            pass
-        if(not fast):
-            try:
-                from pycocoevalcap.meteor.meteor import Meteor
-                gts, res = as_coco_dict(preds, refs)
-                scorer = Meteor()
-                score, _ = scorer.compute_score(gts, res)
-                out["METEOR"] = float(score)
-            except Exception:
-                pass
-            try:
-                from pycocoevalcap.spice.spice import Spice
-                gts, res = as_coco_dict(preds, refs)
-                scorer = Spice()
-                score, _ = scorer.compute_score(gts, res)
-                if isinstance(score, (int, float)):
-                    out["SPICE"] = float(score)
-                else:
-                    try:
-                        vals = []
-                        for d in score:
-                            if isinstance(d, dict) and "All" in d and "f" in d["All"]:
-                                vals.append(float(d["All"]["f"]))
-                        if vals:
-                            out["SPICE"] = sum(vals) / len(vals)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-    except Exception:
-        pass
+        print("[METR] BLEU start"); from pycocoevalcap.bleu.bleu import Bleu
+        bleu, _ = Bleu(n=4).compute_score(gts, res)
+        for i,s in enumerate(bleu,1): out[f"Bleu_{i}"]=float(s)
+        print("[METR] BLEU done")
+
+        print("[METR] ROUGE start"); from pycocoevalcap.rouge.rouge import Rouge
+        rougeL, _ = Rouge().compute_score(gts, res); out["ROUGE_L"]=float(rougeL)
+        print("[METR] ROUGE done")
+
+        print("[METR] CIDEr start"); from pycocoevalcap.cider.cider import Cider
+        cider, _ = Cider().compute_score(gts, res); out["CIDEr"]=float(cider)
+        print("[METR] CIDEr done")
+
+        if not fast:
+            print("[METR] METEOR start"); from pycocoevalcap.meteor.meteor import Meteor
+            meteor, _ = Meteor().compute_score(gts, res); out["METEOR"]=float(meteor)
+            print("[METR] METEOR done")
+
+            print("[METR] SPICE start"); from pycocoevalcap.spice.spice import Spice
+            spice, _ = Spice().compute_score(gts, res)
+            out["SPICE"] = float(spice) if isinstance(spice,(int,float)) else \
+                sum(float(d["All"]["f"]) for d in spice if "All" in d)/len(spice)
+            print("[METR] SPICE done")
+    except Exception as e:
+        print("[METR] crash:", repr(e))
     return out
 
-def eval_sacrebleu(preds, refs):
+def eval_sacrebleu(preds, refs, tokenize=True):
     out = {}
     try:
-        import sacrebleu
+        print("[METR] SacreBLEU start"); import sacrebleu
         max_k = max(len(r) for r in refs) if refs else 0
         ref_sets = []
         for k in range(max_k):
             ref_sets.append([(r[k] if k < len(r) else r[-1]) for r in refs])
         try:
-            bleu = sacrebleu.corpus_bleu(preds, ref_sets, tokenize="intl")
+            if tokenize:
+                bleu = sacrebleu.corpus_bleu(preds, ref_sets, tokenize="intl")
+            else:
+                bleu = sacrebleu.corpus_bleu(preds, ref_sets)
+                
             out["SacreBLEU"] = float(bleu.score)
+            print("[METR] SacreBLEU done")
         except Exception:
             pass
         try: 
+            print("[METR] chrF++ start")
             chrf = sacrebleu.corpus_chrf(preds, ref_sets) 
             out["chrF++"] = float(chrf.score)
+            print("[METR] chrF++ done")
         except Exception: 
             pass
     except Exception:
@@ -104,6 +162,7 @@ def eval_sacrebleu(preds, refs):
 def basic_lengths(preds):
     try:
         import numpy as np
+        print("[INFO] basic_lengths start")
         lens = [len(p.split()) for p in preds]
         return {
             "Len_pred_tokens_avg": float(np.mean(lens)) if lens else 0.0,
@@ -114,13 +173,13 @@ def basic_lengths(preds):
         n = len(lens)
         avg = sum(lens) / n if n else 0.0
         var = sum((x - avg) ** 2 for x in lens) / n if n else 0.0
+        print("[INFO] basic_lengths exception")
         return {
             "Len_pred_tokens_avg": float(avg),
             "Len_pred_tokens_std": float(math.sqrt(var)),
         }
 
 class MetricComputer:
-
     def __init__(
         self,
         bert_model_type: str = "xlm-roberta-large",
@@ -132,7 +191,7 @@ class MetricComputer:
         clip_pretrained: str = "laion5b_s13b_b90k",
         clip_device: Optional[str] = None,
         clip_bs: int = 16,
-        clip_prompt_pl: str = "Na zdjęciu widać ",  # equivalent of "A photo shows ..." loosely translated
+        clip_prompt: str = "Na zdjęciu widać ",  # equivalent of "A photo shows ..." loosely translated
     ):
         self.bertscorer = None
         try:
@@ -147,6 +206,7 @@ class MetricComputer:
                 idf=bert_idf,
                 rescale_with_baseline=bert_rescale_with_baseline,
                 device=bert_device,
+                batch_size=16
             )
             if bert_lang is not None:
                 bert_kwargs["lang"] = bert_lang
@@ -154,12 +214,12 @@ class MetricComputer:
             self.bertscorer = BERTScorer(**bert_kwargs)
         except Exception as e:
             print(f"[MetricComputer] Warning: BERTScorer init failed: {e}")
-
+        
         self.clip_model = None
         self.clip_preprocess = None
         self.clip_tokenizer = None
         self.clip_bs = clip_bs
-        self.clip_prompt_pl = clip_prompt_pl
+        self.clip_prompt = clip_prompt
 
         try:
             import torch
@@ -191,16 +251,22 @@ class MetricComputer:
 
     def compute_metrics(
         self,
-        predictions: Sequence[str],
+        predictions: Sequence[(str)],
         references: Sequence[Union[str, Sequence[str]]],
+        predictions_lemmatized: Sequence[(str)] = None,
+        references_lemmatized: Sequence[Union[str, Sequence[str]]] = None,
         image_paths_for_clip: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
         preds, refs = normalize_lists(predictions, references)
         results: Dict[str, Any] = {}
-
-        results.update(eval_coco_metrics(preds, refs))
-
-        results.update(eval_sacrebleu(preds, refs))
+        
+        if predictions_lemmatized is not None and references_lemmatized is not None:
+            preds_l, refs_l = normalize_lists(predictions_lemmatized, references_lemmatized)
+            results.update(eval_coco_metrics(preds_l, refs_l, False))
+            results.update(eval_sacrebleu(preds_l, refs_l, False))
+        else:
+            results.update(eval_coco_metrics(preds, refs))
+            results.update(eval_sacrebleu(preds, refs))
 
         results.update(self._eval_bertscore_cached(preds, refs))
 
@@ -210,6 +276,7 @@ class MetricComputer:
             print("No image paths, skipping CLIPScore")
 
         results.update(basic_lengths(preds))
+        print("[INFO] basic_lengths end")
         results["N_samples"] = float(len(preds))
         return results
 
@@ -236,6 +303,39 @@ class MetricComputer:
         results.update(basic_lengths(preds))
         results["N_samples"] = float(len(preds))
         return results
+    
+    def compute_metrics_by_id(
+        self,
+        pred_rows: Sequence[Dict[str, Any]],
+        ref_rows: Sequence[Dict[str, Any]],
+        image_root: Optional[str] = None,
+        id_key_pred: Optional[str] = None,
+        id_key_ref: str = "image_id",
+        cap_key_pred: str = "prediction",
+        caps_key_ref: Optional[str] = None,
+        fast: bool = True,
+    ) -> Dict[str, Any]:
+        preds, refs, img_paths, ids = align_by_id(
+            list(pred_rows),
+            list(ref_rows),
+            image_root or "",
+            id_key_pred=id_key_pred,
+            id_key_ref=id_key_ref,
+            cap_key_pred=cap_key_pred,
+            caps_key_ref=caps_key_ref,
+        )
+        if not preds:
+            raise RuntimeError("Przecięcie między predykcjami a referencjami to zbiór pusty.")
+
+        if fast:
+            results = self.compute_metrics_fast(preds, refs, img_paths if image_root else None)
+        else:
+            results = self.compute_metrics(preds, refs, img_paths if image_root else None)
+
+        results["_ids_count"] = len(ids)
+        results["_missing_img_paths"] = sum(1 for p in img_paths if not p)
+        return results
+
 
     def _eval_bertscore_cached(self, preds: List[str], refs: List[List[str]]) -> Dict[str, float]:
         out: Dict[str, float] = {}
@@ -243,7 +343,7 @@ class MetricComputer:
             return out
 
         try:
-            import numpy as np
+            print("[METR] BERTScore start"); import numpy as np
             max_k = max(len(r) for r in refs) if refs else 0
             if max_k == 0:
                 return out
@@ -260,6 +360,7 @@ class MetricComputer:
 
             if best_f1 is not None:
                 out["BERTScore_F1"] = float(best_f1.mean())
+                print("[METR] BERTScore end")
         except Exception as e:
             print(f"[MetricComputer] BERTScore failed: {e}")
         return out
@@ -272,7 +373,7 @@ class MetricComputer:
             import torch
             import numpy as np
             from PIL import Image
-
+            print("[METR] CLIPScore start");
             n = min(len(image_paths), len(texts))
             if n == 0:
                 return out
@@ -280,7 +381,7 @@ class MetricComputer:
             image_paths = image_paths[:n]
             texts = texts[:n]
 
-            prompted_texts = [self.clip_prompt_pl + t for t in texts]
+            prompted_texts = [self.clip_prompt + t for t in texts]
 
             img_feats = []
             bs = max(1, self.clip_bs)
@@ -314,6 +415,8 @@ class MetricComputer:
 
             out["CLIPScore_mean_2_5"] = float(np.mean(score_2_5_np))
             out["CLIPScore_std_2_5"] = float(np.std(score_2_5_np))
+
+            print("[METR] CLIPcore end")
         except Exception as e:
             print(f"[MetricComputer] CLIPScore failed: {e}")
         return out

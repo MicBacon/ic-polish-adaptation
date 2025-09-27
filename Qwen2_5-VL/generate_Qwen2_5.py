@@ -29,8 +29,8 @@ MAX_SAMPLES = 0
 SAMPLE_INDEX = -1
 #SYSTEM_PROMPT = "You are an expert in image captioning. Write clearly and without hallucinating."
 #USER_PROMPT = "Describe this image in one sentence. Consider objects, relations and background. Do not guess."
-SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
-USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
+SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów po polsku. Twórz dokładne, wielozdaniowe opisy na podstawie samych danych wizualnych: obiekty, cechy, układ, relacje, tło, światło, kompozycja. Nie zgaduj ani nie dodawaj informacji spoza obrazu. Nie podawaj konkretnych liczb gdy nie jesteś pewien, nie używaj metafor. Gdy wystąpi niepewność, zaznacz to wprost np \"możliwe, że to pies\"."
+USER_PROMPT = "Opisz szczegółowo ten obraz: główne obiekty i ich cechy, relacje między nimi, tło i otoczenie, kolory i oświetlenie, kompozycja, detale drugiego planu. Pisz rzeczowo w kilku zdaniach. Bez zgadywania."
 
 def fallback_process_vision_info(messages):
     images_batch = []
