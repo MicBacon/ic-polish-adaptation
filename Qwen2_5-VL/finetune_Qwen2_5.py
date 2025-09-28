@@ -7,7 +7,7 @@ from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallb
 from transformers import Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
-sys.path.append(os.path.dirname('/workspace/'))
+sys.path.append(os.path.dirname('~/snap/ic-polish-adaptation/shared'))
 
 from shared.MetricComputer import MetricComputer
 import wandb
@@ -29,7 +29,7 @@ EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 8
 GRAD_ACCUM = 8
-LR = 2e-4
+LR = 1e-4
 WARMUP_RATIO = 0.05
 EVAL_STEPS = 1500
 SAVE_STEPS = 500
@@ -374,6 +374,7 @@ def do_eval_generate(
                         temperature=(temperature if temperature > 0.0 else None),
                         num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                         pad_token_id=processor.tokenizer.eos_token_id,
+                        eos_token_id=processor.tokenizer.eos_token_id,
                         use_cache=use_cache,
                     )
             except Exception:
@@ -388,6 +389,7 @@ def do_eval_generate(
                     temperature=(temperature if temperature > 0.0 else None),
                     num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                     pad_token_id=processor.tokenizer.eos_token_id,
+                    eos_token_id=processor.tokenizer.eos_token_id,
                     use_cache=use_cache,
                 )
 
