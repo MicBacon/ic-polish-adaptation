@@ -513,7 +513,8 @@ def main():
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map,
         num_beams=1, max_new_tokens=24, gen_bs=16, use_cache=True
     )
-    trainer.train(resume_from_checkpoint="out/checkpoint-1000")
+    #trainer.train(resume_from_checkpoint="out/checkpoint-1000")
+    trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
