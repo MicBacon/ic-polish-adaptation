@@ -7,7 +7,7 @@ from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallb
 from transformers import Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
-sys.path.append(os.path.dirname('~/snap/ic-polish-adaptation/shared'))
+sys.path.append(os.path.dirname('/workspace/'))
 
 from shared.MetricComputer import MetricComputer
 import wandb
@@ -29,7 +29,7 @@ EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 8
 GRAD_ACCUM = 8
-LR = 1e-4
+LR = 2e-4
 WARMUP_RATIO = 0.05
 EVAL_STEPS = 1500
 SAVE_STEPS = 500
@@ -374,7 +374,6 @@ def do_eval_generate(
                         temperature=(temperature if temperature > 0.0 else None),
                         num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                         pad_token_id=processor.tokenizer.eos_token_id,
-                        eos_token_id=processor.tokenizer.eos_token_id,
                         use_cache=use_cache,
                     )
             except Exception:
@@ -389,7 +388,6 @@ def do_eval_generate(
                     temperature=(temperature if temperature > 0.0 else None),
                     num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                     pad_token_id=processor.tokenizer.eos_token_id,
-                    eos_token_id=processor.tokenizer.eos_token_id,
                     use_cache=use_cache,
                 )
 
@@ -511,16 +509,15 @@ def main():
     rnd_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map,
-        num_beams=1, max_new_tokens=24, gen_bs=16, use_cache=True
+        num_beams=1, max_new_tokens=64, gen_bs=8, use_cache=True
     )
-    #trainer.train(resume_from_checkpoint="out/checkpoint-1000")
-    trainer.train()
+    trainer.train(resume_from_checkpoint="out/checkpoint-1000")
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
     model.eval()
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map,
-        num_beams=1, max_new_tokens=24, gen_bs=16, use_cache=True
+        num_beams=1, max_new_tokens=64, gen_bs=8, use_cache=True
     )
     metrics = mc.compute_metrics_fast(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")

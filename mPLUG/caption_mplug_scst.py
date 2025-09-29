@@ -1,6 +1,6 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import language_evaluation
 from torch.autograd import Variable
 import numpy as np
@@ -23,10 +23,12 @@ from models.tokenization_bert import BertTokenizer
 
 import utils
 from dataset.utils import save_result
-from dataset import create_dataset, create_sampler, create_loader, coco_collate_fn
+from dataset import create_dataset, create_sampler, create_loader, coco_collate_fn, flickr30k_collate_fn
 
 from scheduler import create_scheduler
 from optim import create_optimizer, create_two_optimizer
+
+import wandb
 
 import language_evaluation.coco_caption_py3.pycocoevalcap as evaluation_tools
 import multiprocessing
@@ -298,7 +300,7 @@ def main(args, config):
 
     #### Dataset ####
     print("Creating vqa datasets")
-    datasets = create_dataset('coco', config)
+    datasets = create_dataset(args.dataset, config)
 
     if args.distributed:
         num_tasks = utils.get_world_size()
@@ -307,10 +309,17 @@ def main(args, config):
     else:
         samplers = [None, None, None]
 
-    train_loader, val_loader, test_loader = create_loader(datasets,samplers,
-                                              batch_size=[config['batch_size_train'],config['batch_size_test'], config['batch_size_test']],
-                                              num_workers=[8,8,8],is_trains=[True, False, False], 
-                                              collate_fns=[coco_collate_fn, coco_collate_fn, coco_collate_fn]) 
+    if args.dataset == 'coco':
+        train_loader, val_loader, test_loader = create_loader(datasets,samplers,
+                                                batch_size=[config['batch_size_train'],config['batch_size_test'], config['batch_size_test']],
+                                                num_workers=[8,8,8],is_trains=[True, False, False], 
+                                                collate_fns=[coco_collate_fn, coco_collate_fn, coco_collate_fn]) 
+    elif args.dataset == 'flickr30k':
+        train_loader, val_loader, test_loader = create_loader(datasets,samplers,
+                                                batch_size=[config['batch_size_train'],config['batch_size_test'], config['batch_size_test']],
+                                                num_workers=[8,8,8],is_trains=[True, False, False], 
+                                                collate_fns=[flickr30k_collate_fn, flickr30k_collate_fn, flickr30k_collate_fn])
+ 
 
 
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
@@ -355,38 +364,51 @@ def main(args, config):
         model_without_ddp = model.module
 
     print("Start training")
+    project_wb = "magisterka"
+
+    config_wb = {
+        'epochs' : max_epoch,
+        'lr' : args.lr,
+        'batch_size' : config['batch_size_train'],
+        'dataset' : args.dataset,
+        'model' : 'mPLUG',
+        'notes' : 'SCTS CIDEr opt finetune with mPLUG'
+    }
     start_time = time.time()
-    for epoch in range(start_epoch, max_epoch):
-        if epoch > 0:
-            lr_scheduler.step(epoch + warmup_steps)
+    with wandb.init(project=project_wb, config=config_wb) as run:
+        run.name = 'mPLUG-CIDEr-optimization'
 
+        for epoch in range(start_epoch, max_epoch):
+            if epoch > 0:
+                lr_scheduler.step(epoch + warmup_steps)
+
+                
+            if not args.evaluate:
+                if args.distributed:
+                    train_loader.sampler.set_epoch(epoch)
+
+                train_stats = train_scst(model, train_loader, test_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler,
+                                    config, do_amp=args.do_amp, do_two_optim=args.do_two_optim, accum_steps=args.accum_steps)
+
+            if args.evaluate:
+                break
+
+            vqa_result = evaluation(model, test_loader, tokenizer, device, config)
+            result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
+            if utils.is_main_process():
+                result = cal_metric(result_file)
+                with open(os.path.join(args.output_dir, "log.txt"), "a") as f:
+                    f.write(json.dumps({'Epoch['+str(epoch)+']':result}) + "\n")
+                torch.save({
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'config': config,
+                    'epoch': epoch,
+                }, os.path.join(args.output_dir, 'checkpoint_%02d.pth' % epoch))
+
+            dist.barrier()
             
-        if not args.evaluate:
-            if args.distributed:
-                train_loader.sampler.set_epoch(epoch)
-
-            train_stats = train_scst(model, train_loader, test_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler,
-                                config, do_amp=args.do_amp, do_two_optim=args.do_two_optim, accum_steps=args.accum_steps)
-
-        if args.evaluate:
-            break
-
-        vqa_result = evaluation(model, test_loader, tokenizer, device, config)
-        result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
-        if utils.is_main_process():
-            result = cal_metric(result_file)
-            with open(os.path.join(args.output_dir, "log.txt"), "a") as f:
-                f.write(json.dumps({'Epoch['+str(epoch)+']':result}) + "\n")
-            torch.save({
-                'model': model_without_ddp.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict(),
-                'config': config,
-                'epoch': epoch,
-            }, os.path.join(args.output_dir, 'checkpoint_%02d.pth' % epoch))
-
-        dist.barrier()
-        
     #vqa_result = evaluation(model, test_loader, tokenizer, device, config)
     #result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
 
@@ -426,6 +448,7 @@ if __name__ == '__main__':
     parser.add_argument('--accum_steps', default=4, type=int)
     parser.add_argument('--lr', default=2e-5, type=float)
     parser.add_argument('--decode_layers', default=12, type=int)
+    parser.add_argument('--dataset', default='coco', type=str, help='dataset name')
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
