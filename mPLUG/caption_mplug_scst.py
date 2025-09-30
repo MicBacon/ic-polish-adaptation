@@ -127,7 +127,7 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
                         'config': config,
                         'epoch': i,
                     }, os.path.join(args.output_dir, 'checkpoint_best.pth'))
-            dist.barrier()
+            #dist.barrier()
             model.train()
 
 
@@ -407,7 +407,12 @@ def main(args, config):
                     'epoch': epoch,
                 }, os.path.join(args.output_dir, 'checkpoint_%02d.pth' % epoch))
 
-            dist.barrier()
+                run.log({**{f'train_{k}': float(v) for k, v in train_stats.items()},
+                'epoch': epoch,
+                **{f'val_{k}': float(v) for k, v in result.items()},
+                })
+
+            #dist.barrier()
             
     #vqa_result = evaluation(model, test_loader, tokenizer, device, config)
     #result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d' % epoch)
