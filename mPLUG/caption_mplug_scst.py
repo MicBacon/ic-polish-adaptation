@@ -31,6 +31,7 @@ from optim import create_optimizer, create_two_optimizer
 import wandb
 
 import language_evaluation.coco_caption_py3.pycocoevalcap as evaluation_tools
+
 try:
     from language_evaluation.coco_caption_py3.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 except ImportError:
@@ -50,7 +51,7 @@ def to_coco(caps):
             d[str(i)] = [{"caption": s} for s in c]
     return d
 
-def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, do_amp=False,
+def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, run, do_amp=False,
           do_two_optim=False, do_accum=False, accum_steps=1):
     # train
     model.train()
@@ -70,6 +71,7 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
     beam_size=args.beam_size
     tokenizer_ptb = PTBTokenizer()
     best_cider = 0.0
+    global_step = epoch * len(data_loader)
     for i, (image, caption, object_labels, image_ids, gold_caption) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         
         image = image.to(device,non_blocking=True)             
@@ -119,6 +121,15 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
         else:
             metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
+        if utils.is_main_process():
+            run.log({
+                "train/loss": float(loss.item()),
+                "train/lr": float(optimizer.param_groups[0]["lr"]),
+                "train/scst_reward_mean": float(reward.mean().item()),
+                "train/scst_reward_std": float(reward.std().item()),
+                "step": global_step + i + 1
+            })
+            
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
         
@@ -129,6 +140,8 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
             model.eval()
             if utils.is_main_process():
                 result = cal_metric(result_file)
+                run.log({**{f"val/{k}": float(v) for k, v in result.items()},
+                         "step": global_step + i + 1})
                 print('*'*100)
                 print(type(result))
                 print(result)
@@ -391,6 +404,9 @@ def main(args, config):
         'notes' : 'SCTS CIDEr opt finetune with mPLUG'
     }
     start_time = time.time()
+
+    wandb.watch(model, log="all", log_freq=50)
+
     with wandb.init(project=project_wb, config=config_wb) as run:
         run.name = 'mPLUG-CIDEr-optimization'
 
@@ -404,7 +420,7 @@ def main(args, config):
                     train_loader.sampler.set_epoch(epoch)
 
                 train_stats = train_scst(model, train_loader, test_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler,
-                                    config, do_amp=args.do_amp, do_two_optim=args.do_two_optim, accum_steps=args.accum_steps)
+                                    config, run, do_amp=args.do_amp, do_two_optim=args.do_two_optim, accum_steps=args.accum_steps)
 
             if args.evaluate:
                 break
