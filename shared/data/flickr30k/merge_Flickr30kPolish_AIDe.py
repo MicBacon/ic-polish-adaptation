@@ -54,14 +54,14 @@ if flickrPolishOk and aideOk:
     aide_unique = {}
     for item in data_AIDe:
         img_id = item["Picture_orig_name"].split("_")[0]
-        if img_id not in aide_unique and img_id in flickr_polish_images:
+        if img_id not in aide_unique and img_id in flickr_folder_images:
             captions = []
             captions.append(item["Caption_1"])
             captions.append(item["Caption_2"])
             captions = [c for c in captions if isinstance(c, str) and c.strip()]
             aide_unique[img_id] = captions
 
-    intersection_ids = set(aide_unique.keys())
+    intersection_ids = set(k for k in aide_unique.keys() if k in flickr_polish_images)
     flickr_candidates = [item for item in data_Flickr if item[0].__str__() not in intersection_ids]
 
     val_set_flickr = flickr_candidates[:1000]
@@ -112,3 +112,7 @@ if flickrPolishOk and aideOk:
         dest.seek(dest.tell() - 2, os.SEEK_SET)
         dest.write("]\n")
         print("Test-HQ set created.")
+
+print("AIDe_total:", len(aide_unique))
+print("AIDe_intersection_with_Flickr:", len(intersection_ids))
+print("Test-HQ set created.")

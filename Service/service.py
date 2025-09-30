@@ -75,7 +75,7 @@ def produce_caption(image, model_name):
         # return result[0]
         return "mPLUG not attached"
     
-    elif model_name == "Qwen2.5-VL-7B-Instruct":
+    elif model_name == "Qwen2.5 (baseline)":
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
         )
@@ -126,9 +126,9 @@ demo = gr.Interface(
     fn=produce_caption,
     inputs=[
         gr.Image(label="Input Image", type="pil"),
-        gr.Dropdown(choices=["mPLUG", "Qwen2.5-VL-7B-Instruct", "InternVL2_5-8B"], label="Model")
+        gr.Dropdown(choices=["mPLUG", "mPLUGFull", "Qwen2.5 (baseline)", "Qwen2.5 (finetuned)", "Qwen2.5 (extended)"], label="Model")
     ],
-    outputs=gr.Textbox(label="Caption") #TODO add metric scores
+    outputs=gr.Textbox(label="Caption")
 )
 
 demo.launch()

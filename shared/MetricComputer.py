@@ -101,6 +101,13 @@ def as_coco_dict(preds, refs):
 def eval_coco_metrics(preds, refs, fast=False):
     out = {}
     gts, res = as_coco_dict(preds, refs)
+
+    gts_ids = set(gts.keys())
+    res_ids = set(res.keys())
+    inter = gts_ids & res_ids
+    print(f"[METR] counts: gts={len(gts_ids)} res={len(res_ids)} inter={len(inter)} missing_in_gts={len(res_ids-gts_ids)} missing_in_res={len(gts_ids-res_ids)}")
+    assert len(inter) > 0
+
     gts = tokenizer.tokenize(gts); res = tokenizer.tokenize(res)
     try:
         print("[METR] BLEU start"); from pycocoevalcap.bleu.bleu import Bleu
@@ -113,7 +120,11 @@ def eval_coco_metrics(preds, refs, fast=False):
         print("[METR] ROUGE done")
 
         print("[METR] CIDEr start"); from pycocoevalcap.cider.cider import Cider
-        cider, _ = Cider().compute_score(gts, res); out["CIDEr"]=float(cider)
+        cider, cider_per_image = Cider().compute_score(gts, res); out["CIDEr"]=float(cider)
+        import numpy as np
+        print(f"[METR][CIDEr] mean={cider:.6f} sum={np.sum(cider_per_image):.6f} "
+        f"min={np.min(cider_per_image):.6f} max={np.max(cider_per_image):.6f} "
+        f"n={len(cider_per_image)}")
         print("[METR] CIDEr done")
 
         if not fast:
@@ -248,6 +259,43 @@ class MetricComputer:
         except Exception as e:
             print(f"[MetricComputer] Warning: OpenCLIP init failed: {e}")
             self.clip_device = None
+    
+    def bleu1_single(self, pred, refs):
+        from pycocoevalcap.bleu.bleu import Bleu
+        gts, res = as_coco_dict([pred], [refs])
+        gts = tokenizer.tokenize(gts); res = tokenizer.tokenize(res)
+        bleu, _ = Bleu(n=4).compute_score(gts, res)
+        return bleu[0]
+    
+    def bleu4_single(self, pred, refs):
+        from pycocoevalcap.bleu.bleu import Bleu
+        gts, res = as_coco_dict([pred], [refs])
+        gts = tokenizer.tokenize(gts); res = tokenizer.tokenize(res)
+        bleu, _ = Bleu(n=4).compute_score(gts, res)
+        return bleu[3]
+
+    def clipscore_single(self, image_path: str, text: str) -> Dict[str, float]:
+        import torch
+        from PIL import Image
+
+        im = Image.open(image_path).convert("RGB")
+        img = self.clip_preprocess(im).unsqueeze(0).to(self.clip_device)
+
+        prompted = (self.clip_prompt or "") + text
+        tokens = self.clip_tokenizer([prompted]).to(self.clip_device)
+
+        with torch.no_grad():
+            img_feat = self.clip_model.encode_image(img)
+            img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
+
+            txt_feat = self.clip_model.encode_text(tokens)
+            txt_feat = txt_feat / txt_feat.norm(dim=-1, keepdim=True)
+
+            sim = (img_feat * txt_feat).sum(dim=-1).clamp(min=0.0)
+            score_100 = float((100.0 * sim).item())
+
+        return score_100
+
 
     def compute_metrics(
         self,
@@ -325,12 +373,12 @@ class MetricComputer:
             caps_key_ref=caps_key_ref,
         )
         if not preds:
-            raise RuntimeError("Przecięcie między predykcjami a referencjami to zbiór pusty.")
+            raise RuntimeError("Przecięcie między predykcjami a referencjami to zbiór pusty!!")
 
         if fast:
             results = self.compute_metrics_fast(preds, refs, img_paths if image_root else None)
         else:
-            results = self.compute_metrics(preds, refs, img_paths if image_root else None)
+            results = self.compute_metrics(preds, refs, None, None, img_paths if image_root else None)
 
         results["_ids_count"] = len(ids)
         results["_missing_img_paths"] = sum(1 for p in img_paths if not p)
