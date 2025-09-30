@@ -129,7 +129,7 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
                 "train/scst_reward_std": float(reward.std().item()),
                 "step": global_step + i + 1
             })
-            
+
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
         
@@ -405,9 +405,9 @@ def main(args, config):
     }
     start_time = time.time()
 
-    wandb.watch(model, log="all", log_freq=50)
 
     with wandb.init(project=project_wb, config=config_wb) as run:
+        wandb.watch(model, log="all", log_freq=50)
         run.name = 'mPLUG-CIDEr-optimization'
 
         for epoch in range(start_epoch, max_epoch):
