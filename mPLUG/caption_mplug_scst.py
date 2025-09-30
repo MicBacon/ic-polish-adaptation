@@ -39,6 +39,16 @@ except ImportError:
 import multiprocessing
 import itertools
 
+def to_coco(caps):
+    if isinstance(caps, dict):
+        return caps
+    d = {}
+    for i, c in enumerate(caps):
+        if isinstance(c, str):
+            d[str(i)] = [{"caption": c}]
+        else:
+            d[str(i)] = [{"caption": s} for s in c]
+    return d
 
 def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, do_amp=False,
           do_two_optim=False, do_accum=False, accum_steps=1):
@@ -58,7 +68,7 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
     step_size = 100
     warmup_iterations = warmup_steps * step_size
     beam_size=args.beam_size
-    tokenizer_pool=multiprocessing.Pool()
+    tokenizer_ptb = PTBTokenizer()
     best_cider = 0.0
     for i, (image, caption, object_labels, image_ids, gold_caption) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         
@@ -85,7 +95,8 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
         topk_words_tensor = torch.Tensor(topk_words).cuda()
         caps_gt = gold_caption
         caps_gt = list(itertools.chain(*([c, ] * beam_size for c in caps_gt)))
-        caps_gen,caps_gt = tokenizer_pool.map(PTBTokenizer.tokenize,[caps_gen,caps_gt])
+        caps_gen = tokenizer_ptb.tokenize(to_coco(caps_gen))
+        caps_gt  = tokenizer_ptb.tokenize(to_coco(caps_gt))
 
         reward=evaluation_tools.compute_ciders(caps_gt,caps_gen)[1].astype(np.float32)
         reward = torch.from_numpy(reward).cuda().view(image.shape[0], beam_size)
