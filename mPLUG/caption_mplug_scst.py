@@ -31,6 +31,11 @@ from optim import create_optimizer, create_two_optimizer
 import wandb
 
 import language_evaluation.coco_caption_py3.pycocoevalcap as evaluation_tools
+try:
+    from language_evaluation.coco_caption_py3.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+except ImportError:
+    from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+
 import multiprocessing
 import itertools
 
@@ -80,7 +85,7 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
         topk_words_tensor = torch.Tensor(topk_words).cuda()
         caps_gt = gold_caption
         caps_gt = list(itertools.chain(*([c, ] * beam_size for c in caps_gt)))
-        caps_gen,caps_gt = tokenizer_pool.map(evaluation_tools.PTBTokenizer.tokenize,[caps_gen,caps_gt])
+        caps_gen,caps_gt = tokenizer_pool.map(PTBTokenizer.tokenize,[caps_gen,caps_gt])
 
         reward=evaluation_tools.compute_ciders(caps_gt,caps_gen)[1].astype(np.float32)
         reward = torch.from_numpy(reward).cuda().view(image.shape[0], beam_size)
