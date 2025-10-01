@@ -151,7 +151,7 @@ def train_scst(model, data_loader, test_loader, optimizer, tokenizer, epoch, war
                     best_cider = result["CIDEr"]*100
 
                     torch.save({
-                        'model': model.module.state_dict(),
+                        'model': model.state_dict(),
                         'optimizer': optimizer.state_dict(),
                         'config': config,
                         'epoch': i,
