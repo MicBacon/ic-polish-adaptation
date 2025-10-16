@@ -19,7 +19,7 @@ ENV HF_HOME=/workspace/.cache/huggingface \
 
 RUN pip install -U pip setuptools wheel && \
     pip install -U \
-    "transformers>=4.43,<4.46" \
+    "transformers==4.57.1" \
     "accelerate>=0.33" \
     "peft>=0.11" \
     "datasets>=2.20" \
