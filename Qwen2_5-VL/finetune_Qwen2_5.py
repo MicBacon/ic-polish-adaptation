@@ -29,14 +29,14 @@ EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 8
 GRAD_ACCUM = 8
-LR = 2e-4
+LR = 1e-4
 WARMUP_RATIO = 0.05
-EVAL_STEPS = 1500
+EVAL_STEPS = 1000
 SAVE_STEPS = 500
 USE_FLASH_ATTN = True
-SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
-USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
-MAX_NEW_TOKENS = 32
+SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
+USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
+MAX_NEW_TOKENS = 128
 NUM_BEAMS = 3
 TEMPERATURE = 0.0
 
@@ -59,7 +59,7 @@ def image_id_from_path(p):
 class RandomSubsetEvalCallback(TrainerCallback):
     def __init__(self, base_eval_ds, refs_map, processor,
                  n_samples=50, every_steps=1500, gen_bs=16, fast_eval=True, seed=1337):
-        self.base = base_eval_ds           # np. val_ds_loss (1 wpis/obraz)
+        self.base = base_eval_ds
         self.refs_map = refs_map
         self.p = processor
         self.n = n_samples
@@ -82,7 +82,7 @@ class RandomSubsetEvalCallback(TrainerCallback):
         idxs = rng.sample(range(len(self.base)), min(self.n, len(self.base)))
 
         subset = Subset(self.base, idxs)
-        loss_metrics = self._trainer.evaluate(eval_dataset=subset, metric_key_prefix="eval")  # nie blokuje treningu
+        loss_metrics = self._trainer.evaluate(eval_dataset=subset, metric_key_prefix="eval")
 
         ds_list = [self.base[i] for i in idxs]
         num_beams = 1 if self.fast else (NUM_BEAMS or 1)
@@ -149,7 +149,7 @@ def _find_image_path(image_id, image_root):
             return os.path.abspath(p)
     return os.path.abspath(os.path.join(image_root, "Images", f"{s}.jpg"))
 
-class CaptionDatasetOneCapPerImage(Dataset):
+class CaptionValJsonDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = read_json(json_path)
         self.samples = []
@@ -182,7 +182,7 @@ class CaptionDatasetOneCapPerImage(Dataset):
             "image_id": ex["image_id"]
         }
 
-class CaptionJsonlDataset(Dataset):
+class CaptionTrainJsonDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = read_json(json_path)
         self.samples = []
@@ -192,8 +192,10 @@ class CaptionJsonlDataset(Dataset):
             caps = rec.get("captions") or []
             ip = _find_image_path(img_id, self.image_root)
             for c in caps:
-                if isinstance(c, str) and c.strip():
-                    self.samples.append({"image_path": ip, "assistant_text": c.strip(), "image_id": str(img_id)})
+                if isinstance(c, str):
+                    s = c.strip()
+                    if s:
+                        self.samples.append({"image_path": ip, "assistant_text": s, "image_id": str(img_id)})
 
     def __len__(self):
         return len(self.samples)
@@ -321,6 +323,7 @@ def do_eval_generate(
         model.config.use_cache = True
 
     preds, refs, img_paths = [], [], []
+    was_training = model.training
     model.eval()
 
     def _extract_images(messages):
@@ -371,10 +374,12 @@ def do_eval_generate(
                         **inputs,
                         max_new_tokens=max_new_tokens,
                         do_sample=(temperature > 0.0),
-                        temperature=(temperature if temperature > 0.0 else None),
+                        temperature=temperature,
                         num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                         pad_token_id=processor.tokenizer.eos_token_id,
                         use_cache=use_cache,
+                        no_repeat_ngram_size=4,
+                        repetition_penalty=1.15
                     )
             except Exception:
                 try:
@@ -385,10 +390,12 @@ def do_eval_generate(
                     **inputs,
                     max_new_tokens=max_new_tokens,
                     do_sample=(temperature > 0.0),
-                    temperature=(temperature if temperature > 0.0 else None),
+                    temperature=temperature,
                     num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                     pad_token_id=processor.tokenizer.eos_token_id,
                     use_cache=use_cache,
+                    no_repeat_ngram_size=4,
+                    repetition_penalty=1.15
                 )
 
         for j, ex in enumerate(chunk):
@@ -410,15 +417,14 @@ def do_eval_generate(
     except Exception:
         pass
 
+    if was_training:
+        model.train()
+
     return preds, refs, img_paths
-
-
-
 
 def main():
     if not TRAIN_FILE or not VAL_FILE:
         return
-    dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
     model_kwargs = {"device_map": "auto"}
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
@@ -434,26 +440,23 @@ def main():
     refs_map = {}
     if VAL_FILE:
         raw = read_json(VAL_FILE)
-        if isinstance(raw, dict):
-            refs_map = raw
-        elif isinstance(raw, list):
-            for rec in raw:
-                k = str(rec.get("image_id", ""))
-                rs = rec.get("captions") or rec.get("references") or []
-                if k:
-                    refs_map[k] = rs
+        for rec in raw:
+            k = str(rec.get("image_id", ""))
+            rs = rec.get("captions") or []
+            if k:
+                refs_map[k] = [s.strip() for s in rs if isinstance(s, str) and s.strip()]
     lora_cfg = LoraConfig(
         r=16,
         lora_alpha=32,
         lora_dropout=0.05,
-        target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
+        target_modules=["q_proj","k_proj","v_proj","o_proj", "gate_proj", "up_proj", "down_proj"],
         bias="none",
         task_type="CAUSAL_LM",
     )
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
-    train_ds = CaptionJsonlDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
-    val_ds = CaptionDatasetOneCapPerImage(VAL_FILE, image_root=IMAGE_ROOT)
+    train_ds = CaptionTrainJsonDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
+    val_ds = CaptionValJsonDataset(VAL_FILE, image_root=IMAGE_ROOT)
     rnd_cb = RandomSubsetEvalCallback(
         base_eval_ds=val_ds,
         refs_map=refs_map,
@@ -464,7 +467,7 @@ def main():
     )
     data_collator = DataCollatorQwenVL(processor=processor)
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True,
-                          patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore_2"))
+                          patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
     training_args = TrainingArguments(
         output_dir=OUT_DIR,
         num_train_epochs=EPOCHS,
@@ -473,7 +476,9 @@ def main():
         gradient_accumulation_steps=GRAD_ACCUM,
         learning_rate=LR,
         lr_scheduler_type="cosine",
+        optim='adamw_bnb_8bit',
         warmup_ratio=WARMUP_RATIO,
+        weight_decay = 0.01,
         logging_steps=50,
         save_strategy="steps",
         load_best_model_at_end=False,
@@ -496,7 +501,7 @@ def main():
         log_level="info",
         report_to="wandb",
         run_name="qwen2.5-vl-finetune_BSEarlyStopping_patience_8_new_metrics_quantization",)
-    #model.gradient_checkpointing_enable()
+    model.gradient_checkpointing_enable()
     model.config.use_cache = False
     trainer = Trainer(
         model=model,
@@ -511,7 +516,8 @@ def main():
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map,
         num_beams=1, max_new_tokens=64, gen_bs=8, use_cache=True
     )
-    trainer.train(resume_from_checkpoint="out/checkpoint-1000")
+    #trainer.train(resume_from_checkpoint="out/checkpoint-1000")
+    trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
     print(OUT_DIR)
