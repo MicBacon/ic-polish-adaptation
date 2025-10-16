@@ -20,21 +20,29 @@ IMAGE_ROOT = "../shared/data/flickr30k/Images"
 IMAGE_EXTS = "jpg,jpeg,png"
 PEFT_ADAPTER_PATH = ""
 DEVICE = "auto"
-MAX_NEW_TOKENS = 128
+MAX_NEW_TOKENS = 512
 NUM_BEAMS = 3
 TEMPERATURE = 0.0
 OUTPUT_PREDICTIONS = "predictions_nurtb_e1_128_update.jsonl"
 OUTPUT_METRICS = "metrics_nurtb_e1_128_update.json"
 MAX_SAMPLES = 0
 SAMPLE_INDEX = -1
+
+#ENG
 #SYSTEM_PROMPT = "You are an expert in image captioning. Write clearly and without hallucinating."
 #USER_PROMPT = "Describe this image in one sentence. Consider objects, relations and background. Do not guess."
-#SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów po polsku. Twórz dokładne, wielozdaniowe opisy na podstawie samych danych wizualnych: obiekty, cechy, układ, relacje, tło, światło, kompozycja. Nie zgaduj ani nie dodawaj informacji spoza obrazu. Nie podawaj konkretnych liczb gdy nie jesteś pewien, nie używaj metafor. Gdy wystąpi niepewność, zaznacz to wprost np \"możliwe, że to pies\"."
-#USER_PROMPT = "Opisz szczegółowo ten obraz: główne obiekty i ich cechy, relacje między nimi, tło i otoczenie, kolory i oświetlenie, kompozycja, detale drugiego planu. Pisz rzeczowo w kilku zdaniach. Bez zgadywania."
+
+#POLBASE
 #SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
 #USER_PROMPT = "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
-SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
-USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
+
+#POLUPDATE
+#SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
+#USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
+
+#POLEXT
+SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Twórz dokładne, wielozdaniowe opisy na podstawie samych danych wizualnych: obiekty, cechy, układ, relacje, tło, światło, kompozycja. Nie zgaduj ani nie dodawaj informacji spoza obrazu. Nie podawaj konkretnych liczb gdy nie jesteś pewien, nie używaj metafor. Gdy wystąpi niepewność, zaznacz to wprost np. \"możliwe, że to \"."
+USER_PROMPT = "Opisz szczegółowo ten obraz: kluczowe obiekty i ich cechy, relacje między nimi, tło i otoczenie, kolory i oświetlenie, kompozycja, detale drugiego planu. Pisz rzeczowo w kilku zdaniach, tylko po polsku. Bez zgadywania."
 
 def fallback_process_vision_info(messages):
     images_batch = []
