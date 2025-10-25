@@ -416,7 +416,7 @@ def main():
         log_level="info",
         report_to="wandb",
         run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128",
-        evaluation_strategy="epoch"
+        eval_strategy="epoch"
     )
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
