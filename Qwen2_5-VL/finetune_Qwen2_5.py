@@ -24,7 +24,7 @@ torch.backends.cudnn.allow_tf32 = True
 
 MODEL_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
 TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_train.json"
-VAL_FILE = "../shared/data/flickr30kPolish_captions_val.json"
+VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"
 IMAGE_ROOT = "/workspace/shared/data/flickr30k"
 OUT_DIR = "out"
 EPOCHS = 20
