@@ -258,7 +258,7 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                         do_sample=False,
                         num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                         pad_token_id=processor.tokenizer.eos_token_id,
-                        eos_token_id=processor.tokenizer.eos.token_id,
+                        eos_token_id=processor.tokenizer.eos_token_id,
                         early_stopping=True,
                         min_new_tokens=4,
                         use_cache=use_cache
@@ -274,7 +274,7 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                     do_sample=False,
                     num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                     pad_token_id=processor.tokenizer.eos_token_id,
-                    eos_token_id=processor.tokenizer.eos.token_id,
+                    eos_token_id=processor.tokenizer.eos_token_id,
                     early_stopping=True,
                     min_new_tokens=4,
                     use_cache=use_cache
@@ -443,6 +443,7 @@ def main():
     )
     full_eval_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
