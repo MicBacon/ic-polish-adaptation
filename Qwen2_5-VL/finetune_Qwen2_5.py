@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, re
 import json
 import torch
 from torch.utils.data import Dataset
@@ -53,6 +53,11 @@ def read_json(path):
 def image_id_from_path(p):
     b = os.path.basename(p)
     return os.path.splitext(b)[0]
+
+def one_sentence(s: str) -> str:
+    s = s.split("<|im_end|>")[0].splitlines()[0].strip()
+    s = re.split(r'(?<=[\.\!\?])\s+', s)[0].strip()
+    return s
 
 def _find_image_path(image_id, image_root):
     exts = ["jpg","jpeg","png"]
@@ -253,6 +258,9 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                         do_sample=False,
                         num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                         pad_token_id=processor.tokenizer.eos_token_id,
+                        eos_token_id=processor.tokenizer.eos.token_id,
+                        early_stopping=True,
+                        min_new_tokens=4,
                         use_cache=use_cache
                     )
             except Exception:
@@ -266,12 +274,16 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                     do_sample=False,
                     num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
                     pad_token_id=processor.tokenizer.eos_token_id,
+                    eos_token_id=processor.tokenizer.eos.token_id,
+                    early_stopping=True,
+                    min_new_tokens=4,
                     use_cache=use_cache
                 )
         for j, ex in enumerate(chunk):
             start = int(input_lens[j].item())
             gen_ids = out_ids[j, start:]
             pred = processor.batch_decode(gen_ids.unsqueeze(0), skip_special_tokens=True)[0].strip()
+            pred = one_sentence(pred)
             preds.append(pred)
             img_paths.append(ex["image_path"])
             k = ex["image_id"]
