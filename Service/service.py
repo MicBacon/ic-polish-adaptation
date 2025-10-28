@@ -1,4 +1,7 @@
 import gradio as gr
+import requests
+from PIL import Image
+import io
 
 def produce_caption(image, model_name):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -14,7 +17,7 @@ demo = gr.Interface(
     fn=produce_caption,
     inputs=[
         gr.Image(label="Input Image", type="pil"),
-        gr.Dropdown(choices=["mPLUG", "mPLUGFull", "Qwen2.5 (baseline)", "Qwen2.5 (finetuned)", "Qwen2.5 (extended)"], label="Model")
+        gr.Dropdown(choices=["mPLUG (Flickr30k only)", "mPLUG Full", "Qwen2.5-VL-7B (baseline) EN->PL", "Qwen2.5-VL-7B (baseline)", "Qwen2.5-VL-7B (finetuned)", "Qwen2.5-VL-7B (extended)"], label="Model")
     ],
     outputs=gr.Textbox(label="Caption")
 )
