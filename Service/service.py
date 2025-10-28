@@ -12,7 +12,7 @@ def produce_caption(image, model_name):
         return f"Qwen2.5 (baseline)"
     else:
         return f"Caption for {model_name} model"
-
+    
 demo = gr.Interface(
     fn=produce_caption,
     inputs=[
@@ -22,4 +22,4 @@ demo = gr.Interface(
     outputs=gr.Textbox(label="Caption")
 )
 
-demo.launch()
+demo.launch(server_name="0.0.0.0", server_port=7860)
