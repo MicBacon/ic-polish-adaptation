@@ -27,7 +27,7 @@ RUN pip install -U pip setuptools wheel && \
     "pycocoevalcap==1.2" \
     open_clip_torch sentence-transformers wandb \
     pillow sentencepiece "timm>=0.9" einops \
-    qwen-vl-utils hf-transfer && \
+    qwen-vl-utils hf-transfer bitsandbytes && \
     pip install flash-attn --no-build-isolation
 
 COPY . /workspace/
