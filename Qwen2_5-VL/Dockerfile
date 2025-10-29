@@ -17,12 +17,13 @@ ENV HF_HOME=/workspace/.cache/huggingface \
     PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
     NCCL_ASYNC_ERROR_HANDLING=1
 
+COPY . /workspace/
+
 RUN pip install -U pip setuptools wheel && \
     pip install -Ur requirements.txt && \
     pip install flash-attn --no-build-isolation && \
     pip install --no-cache-dir "uvicorn[standard]" fastapi python-multipart
 
-COPY . /workspace/
 
 EXPOSE 7862
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7862"]
