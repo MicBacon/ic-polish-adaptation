@@ -3,8 +3,8 @@ import requests
 from PIL import Image
 import io
 
-MPLUG_URL = "http://mplug-ctn:7863/generate_caption"
-QWEN_URL = "http://qwen-ctn:7862/generate_caption"
+MPLUG_URL = "http://gradio-mplug-ctn:7863/generate_caption"
+QWEN_URL = "http://gradio-qwen-ctn:7862/generate_caption"
 
 def produce_caption(image_pil, variant_name):
     if 'mPLUG' in variant_name:
