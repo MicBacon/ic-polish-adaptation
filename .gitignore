@@ -12,6 +12,10 @@ shared/data/flickr30k/*.csv
 shared/data/flickr30k/*.txt
 shared/data/flickr30k/Images/
 shared/data/flickr30k/dataset_flickr/
+shared/just_evaluate_en_results/
+shared/just_evaluate_results/
+shared/translate_evaluate_results/
+shared/*.csv
 Service/.gradio/
 Qwen2_5-VL/eval_results
 Qwen2_5-VL/__pycache__
