@@ -16,8 +16,8 @@ app = FastAPI()
 #     allow_headers=["*"],
 # )
 
-@app.post("/upload")
-async def upload(file: UploadFile = File(...), model: str = Form(...)):
+@app.post("/generate_caption")
+async def generate_caption(file: UploadFile = File(...), model: str = Form(...)):
     data = await file.read()
     img = Image.open(BytesIO(data))
     w, h = img.size
