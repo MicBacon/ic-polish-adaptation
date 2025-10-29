@@ -13,6 +13,8 @@ shared/data/flickr30k/*.txt
 shared/data/flickr30k/Images/
 shared/data/flickr30k/dataset_flickr/
 Service/.gradio/
+Qwen2_5-VL/eval_results
+Qwen2_5-VL/__pycache__
 
 # Unwanted ungrouped extensions #
 #################################
