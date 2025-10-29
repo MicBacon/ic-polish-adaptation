@@ -1,4 +1,3 @@
-starlette
 transformers==4.57.1
 accelerate>=0.33
 peft>=0.11

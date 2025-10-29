@@ -61,5 +61,8 @@ RUN cd mPLUG && git clone https://github.com/j-min/language-evaluation && \
 # 	unzip test2014.zip && rm test2014.zip
 
 # pobranie checkpointów oraz backbone
-RUN cd mPLUG && wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/mplug_large_v2.pth && \
-	wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/ViT-L-14.tar
+RUN cd mPLUG && wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/ViT-L-14.tar
+#&& wget https://alice-open.oss-cn-zhangjiakou.aliyuncs.com/mPLUG/mplug_large_v2.pth && \
+
+EXPOSE 7863
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7863"]

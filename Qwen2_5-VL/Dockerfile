@@ -19,8 +19,10 @@ ENV HF_HOME=/workspace/.cache/huggingface \
 
 RUN pip install -U pip setuptools wheel && \
     pip install -Ur requirements.txt && \
-    pip install flash-attn --no-build-isolation
+    pip install flash-attn --no-build-isolation && \
+    pip install --no-cache-dir "uvicorn[standard]" fastapi python-multipart
 
 COPY . /workspace/
 
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "7862"]
+EXPOSE 7862
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7862"]
