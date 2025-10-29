@@ -1,0 +1,12 @@
+.git
+.venv
+env/
+logs/
+__pycache__
+*.pyc
+*.log
+*.csv
+just_evaluate_en_results
+just_evaluate_en_results
+translate_evaluate_results
+data/coco_object

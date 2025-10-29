@@ -32,4 +32,4 @@ RUN pip install -U pip setuptools wheel && \
 
 COPY . /workspace/
 
-CMD ["/bin/bash"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

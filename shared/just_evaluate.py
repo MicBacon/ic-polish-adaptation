@@ -4,14 +4,19 @@ from MetricComputer import MetricComputer
 
 INPUT_PATHS = [#'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_128.jsonl',
                #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions.jsonl',
-                #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e2_512.jsonl'
-                '../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_128_update.jsonl'
+               #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_128_update.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_96_update.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_96_update.jsonl',
+               '../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512.jsonl',
+               '../Qwen2_5-VL/eval_results/raw_ext_pl_test_std/predictions_nb_e2_512.jsonl',
                ]
 RESULT_PATH = 'just_evaluate_results/'
 DST_FILES = [#'Qwen2_5-VL_raw_pl_test_std_nb_e1_128.json',
              #'Qwen2_5-VL_raw_pl_test_std.json',
-             #'Qwen2_5-VL_raw_pl_test_std_nb_e2_512.json',
-             'Qwen2_5-VL_raw_pl_test_std_nb_e1_128_update.json',
+             #'Qwen2_5-VL_raw_pl_test_std_nb_e1_96_update.json'
+             #'Qwen2_5-VL_raw_pl_test_hq_nb_e1_96_update.json',
+             'Qwen2_5-VL_raw_ext_pl_test_hq_nb_e2.json',
+             'Qwen2_5-VL_raw_ext_pl_test_std_nb_e2.json',
              ]
 
 nlp = stanza.Pipeline(

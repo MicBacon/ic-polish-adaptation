@@ -4,7 +4,10 @@ INPUT_FILES = [#'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_12
                #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_128.jsonl',
               #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions.jsonl',
               #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions.jsonl',
-              '../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_128_update.jsonl'
+              #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_128_update.jsonl',
+              #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_96_update.jsonl',
+              #'../Qwen2_5-VL/eval_results/raw_ext_pl_test_std/predictions_nb_e2_512.jsonl',
+              '../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512.jsonl',
               ]
 
 count_not_end = 0

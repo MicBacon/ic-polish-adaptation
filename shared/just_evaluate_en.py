@@ -5,9 +5,17 @@ import jsonlines
 from typing import List, Tuple, Dict, Any
 from MetricComputer import MetricComputer
 
-INPUT_EN_PRED = ['../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_hq.json', '../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_std.json']
-EN_REF_PATH   = ['data/flickr30k/flickr30kEnglish_captions_test_hq.json', 'data/flickr30k/flickr30kEnglish_captions_test_std.json']
-OUT_METRICS   = ['just_evaluate_en_results/mPLUG_metrics_EN_EN_hq.json', 'just_evaluate_en_results/mPLUG_metrics_EN_EN_std.json']
+INPUT_EN_PRED = [#'../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_hq.json',
+                  #'../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_std.json',
+                  '../mPLUG/output/flickr30k/eval_after_full_finetune_test_hq.json',
+                  '../mPLUG/output/flickr30k/eval_after_full_finetune_test_std.json',
+                  ]
+EN_REF_PATH   = ['data/flickr30k/flickr30kEnglish_captions_test_hq.json', 
+                 'data/flickr30k/flickr30kEnglish_captions_test_std.json',
+                 ]
+OUT_METRICS   = ['just_evaluate_en_results/mPLUG_FULL_metrics_EN_EN_hq.json', 
+                 'just_evaluate_en_results/mPLUG_FULL_metrics_EN_EN_std.json',
+                 ]
 
 IMAGE_ROOT = "/Users/michalboczon/dev/Magisterka/ic-polish-adaptation/shared/data/flickr30k/Images"
 EXTS = ("jpg", "jpeg", "png")

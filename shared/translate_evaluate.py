@@ -12,17 +12,21 @@ INPUT_PATHS = [
     #'../Qwen2_5-VL/eval_results/raw_en_test_hq/predictions.jsonl',
     #'../Qwen2_5-VL/eval_results/raw_en_test_std/predictions.jsonl',
     #'../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_hq.json',
-    '../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_std.json',
+    #'../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_std.json',
+    '../mPLUG/output/flickr30k/eval_after_full_finetune_test_hq.json',
+    #'../mPLUG/output/flickr30k/eval_after_full_finetune_test_std.json',
 ]
 DST_FILES = [
     #'Qwen2_5-VL_raw_en_test_hq.json',
     #'Qwen2_5-VL_raw_en_test_std.json',
     #'mPLUG_flickr_en_test_hq.json',
-    'mPLUG_flickr_en_test_std.json',
+    #'mPLUG_flickr_en_test_std.json',
+    'mPLUG_FULL_test_hq.json',
+    #'mPLUG_FULL_test_std.json',
 ]
 RESULTS_FOLDER = 'translate_evaluate_results/'
 
-PL_REFERENCES_PATH = 'data/flickr30k/flickr30kPolish_captions_test_std.json'
+PL_REFERENCES_PATH = 'data/flickr30k/flickr30kPolish_captions_test_hq.json'
 
 IMAGE_ROOT = '/Users/michalboczon/dev/Magisterka/ic-polish-adaptation/shared/data/flickr30k/Images'
 
