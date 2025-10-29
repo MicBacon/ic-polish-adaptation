@@ -18,18 +18,9 @@ ENV HF_HOME=/workspace/.cache/huggingface \
     NCCL_ASYNC_ERROR_HANDLING=1
 
 RUN pip install -U pip setuptools wheel && \
-    pip install -U \
-    "transformers==4.57.1" \
-    "accelerate>=0.33" \
-    "peft>=0.11" \
-    "datasets>=2.20" \
-    evaluate rouge_score nltk bert_score sacrebleu \
-    "pycocoevalcap==1.2" \
-    open_clip_torch sentence-transformers wandb \
-    pillow sentencepiece "timm>=0.9" einops \
-    qwen-vl-utils hf-transfer bitsandbytes && \
+    pip install -Ur requirements.txt && \
     pip install flash-attn --no-build-isolation
 
 COPY . /workspace/
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "7862"]
