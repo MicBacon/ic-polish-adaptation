@@ -507,7 +507,7 @@ def main():
 
     full_eval_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
-    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
+    #preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
     
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
