@@ -38,7 +38,7 @@ USE_FLASH_ATTN = True
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
 USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
 MAX_NEW_TOKENS = 128
-NUM_BEAMS = 1
+NUM_BEAMS = 3
 TEMPERATURE = 0.0
 
 os.environ["WANDB_PROJECT"] = "magisterka"
@@ -312,12 +312,14 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                         **inputs,
                         max_new_tokens=max_new_tokens,
                         do_sample=False,
-                        num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
+                        num_beams=NUM_BEAMS,
                         pad_token_id=processor.tokenizer.eos_token_id,
                         eos_token_id=processor.tokenizer.eos_token_id,
                         early_stopping=True,
                         min_new_tokens=4,
-                        use_cache=use_cache
+                        use_cache=use_cache,
+                        no_repeat_ngram_size=4,
+                        repetition_penalty=1.15
                     )
             except Exception:
                 try:
@@ -328,12 +330,14 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                     **inputs,
                     max_new_tokens=max_new_tokens,
                     do_sample=False,
-                    num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
+                    num_beams=NUM_BEAMS,
                     pad_token_id=processor.tokenizer.eos_token_id,
                     eos_token_id=processor.tokenizer.eos_token_id,
                     early_stopping=True,
                     min_new_tokens=4,
-                    use_cache=use_cache
+                    use_cache=use_cache,
+                    no_repeat_ngram_size=4,
+                    repetition_penalty=1.15
                 )
         for j, ex in enumerate(chunk):
             start = int(input_lens[j].item())
@@ -386,7 +390,7 @@ class EarlyStopByMetric(TrainerCallback):
         return control
 
 class FullValEachEpochCallback(TrainerCallback):
-    def __init__(self, eval_ds, refs_map, processor, num_beams=1, gen_bs=16, max_new_tokens=128, temperature=0.0):
+    def __init__(self, eval_ds, refs_map, processor, num_beams=3, gen_bs=16, max_new_tokens=128, temperature=0.0):
         self.eval_ds = eval_ds
         self.refs_map = refs_map
         self.p = processor
