@@ -27,7 +27,7 @@ async def generate_caption(file: UploadFile = File(...), model: str = Form(...))
         "filename": file.filename,
         "content_type": file.content_type,
         "width": w, "height": h, "bytes": len(data),
-        "result": "a caption"
+        "caption": "a caption"
     })
 
 @app.get("/health")
