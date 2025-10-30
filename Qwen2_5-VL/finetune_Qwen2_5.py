@@ -364,15 +364,18 @@ def main():
     model_kwargs = {"device_map": "auto"}
     if USE_FLASH_ATTN:
         model_kwargs["attn_implementation"] = "flash_attention_2"
+
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
+
     model = load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs)
     model = prepare_model_for_kbit_training(model)
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
+
     refs_map = {}
     if VAL_FILE:
         raw = read_json(VAL_FILE)
@@ -381,6 +384,7 @@ def main():
             rs = rec.get("captions") or []
             if k:
                 refs_map[k] = [s.strip() for s in rs if isinstance(s, str) and s.strip()]
+
     lora_cfg = LoraConfig(
         r=16,
         lora_alpha=32,
@@ -389,6 +393,7 @@ def main():
         bias="none",
         task_type="CAUSAL_LM",
     )
+
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
     train_ds = CaptionTrainJsonDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
@@ -396,6 +401,7 @@ def main():
     full_eval_cb = FullValEachEpochCallback(eval_ds=val_ds, refs_map=refs_map, processor=processor, num_beams=1, gen_bs=16, max_new_tokens=MAX_NEW_TOKENS, temperature=TEMPERATURE)
     es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True, patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
     data_collator = DataCollatorQwenVL(processor=processor)
+
     training_args = TrainingArguments(
         output_dir=OUT_DIR,
         num_train_epochs=EPOCHS,
@@ -430,8 +436,10 @@ def main():
         run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128",
         eval_strategy="epoch"
     )
+
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
+
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -441,16 +449,20 @@ def main():
         compute_metrics=None,
         callbacks=[full_eval_cb, es_cb]
     )
+
     full_eval_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
+    
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
+
     model.eval()
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
     metrics = mc.compute_metrics_fast(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
+    
     with open(mpath, "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
     print(mpath)
