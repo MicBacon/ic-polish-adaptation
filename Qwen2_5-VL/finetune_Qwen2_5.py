@@ -213,26 +213,27 @@ class DataCollatorQwenVL:
                 prompt_len = enc["input_ids"].shape[1]
                 labels[i, :min(prompt_len, seq_len)] = -100
         
-        if True:
-            for i in range(min(2, len(batch))):
-                print(f"\n{'='*70}")
-                print(f"DEBUG SAMPLE {i}")
-                print(f"{'='*70}")
-                print(f"Full decoded text:\n{self.tok.decode(input_ids[i])[:500]}...")
-                print(f"\nTotal tokens: {input_ids.shape[1]}")
+        # DEBUG
+        # if True:
+        #     for i in range(min(2, len(batch))):
+        #         print(f"\n{'='*70}")
+        #         print(f"DEBUG SAMPLE {i}")
+        #         print(f"{'='*70}")
+        #         print(f"Full decoded text:\n{self.tok.decode(input_ids[i])[:500]}...")
+        #         print(f"\nTotal tokens: {input_ids.shape[1]}")
                 
-                masked_count = (labels[i] == -100).sum().item()
-                print(f"Masked tokens: {masked_count}")
+        #         masked_count = (labels[i] == -100).sum().item()
+        #         print(f"Masked tokens: {masked_count}")
                 
-                unmasked_ids = input_ids[i][labels[i] != -100]
-                if len(unmasked_ids) > 0:
-                    unmasked_text = self.tok.decode(unmasked_ids)
-                    print(f"\nWhat model learns (unmasked):\n{unmasked_text}")
-                else:
-                    print(f"\nWARNING: Everything is masked!")
+        #         unmasked_ids = input_ids[i][labels[i] != -100]
+        #         if len(unmasked_ids) > 0:
+        #             unmasked_text = self.tok.decode(unmasked_ids)
+        #             print(f"\nWhat model learns (unmasked):\n{unmasked_text}")
+        #         else:
+        #             print(f"\nWARNING: Everything is masked!")
                 
-                print(f"\nExpected assistant text:\n{assistant_texts[i]}")
-                print(f"{'='*70}\n")
+        #         print(f"\nExpected assistant text:\n{assistant_texts[i]}")
+        #         print(f"{'='*70}\n")
         
         batch_out = {
             "input_ids": input_ids,
@@ -507,8 +508,21 @@ def main():
 
     full_eval_cb.set_trainer(trainer)
     es_cb.set_trainer(trainer)
-    #preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
-    
+
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, 
+    num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
+
+    baseline_metrics = mc.compute_metrics_fast(preds, refs, img_paths)
+    print("\n" + "="*70)
+    print("BASELINE METRICS (before training):")
+    print(json.dumps(baseline_metrics, ensure_ascii=False, indent=2))
+    print("="*70 + "\n")
+
+    # Zapisz przykłady
+    for i in range(5):
+        print(f"Pred: {preds[i]}")
+        print(f"Ref:  {refs[i][0]}\n")
+        
     trainer.train()
     trainer.model.save_pretrained(OUT_DIR)
     processor.save_pretrained(OUT_DIR)
