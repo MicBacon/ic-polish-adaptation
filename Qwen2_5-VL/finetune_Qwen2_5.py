@@ -1,5 +1,5 @@
 import os, sys, re
-import json
+import json, random
 import torch
 from torch.utils.data import Dataset
 from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallback
@@ -27,12 +27,12 @@ TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_train.json"
 VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"
 IMAGE_ROOT = "/workspace/shared/data/flickr30k"
 OUT_DIR = "out"
-EPOCHS = 20
+EPOCHS = 10
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 8
 GRAD_ACCUM = 8
-LR = 1e-4
-WARMUP_RATIO = 0.05
+LR = 1e-5
+WARMUP_RATIO = 0.1
 SAVE_STEPS = 500
 USE_FLASH_ATTN = True
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
@@ -112,7 +112,7 @@ def normalize_records(raw_list, image_root):
 class CaptionValJsonDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = normalize_records(read_json(json_path), image_root)
-        self.samples = [{"image_path": r["image_path"], "assistant_text": r["captions"][0], "image_id": r["image_id"]} for r in raw]
+        self.samples = [{"image_path": r["image_path"], "assistant_text": random.choice(r["captions"]), "image_id": r["image_id"]} for r in raw]
     def __len__(self):  return len(self.samples)
     def __getitem__(self, idx):
         ex = self.samples[idx]
@@ -134,7 +134,7 @@ class CaptionValJsonDataset(Dataset):
 class CaptionTrainJsonDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = normalize_records(read_json(json_path), image_root)
-        self.samples = [{"image_path": r["image_path"], "assistant_text": c, "image_id": r["image_id"]} for r in raw for c in r["captions"]]
+        self.samples = [{"image_path": r["image_path"], "assistant_text": random.choice(r["captions"]), "image_id": r["image_id"]} for r in raw]
     def __len__(self): return len(self.samples)
     def __getitem__(self, idx):
         ex = self.samples[idx]
@@ -399,7 +399,7 @@ def main():
     train_ds = CaptionTrainJsonDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
     val_ds = CaptionValJsonDataset(VAL_FILE, image_root=IMAGE_ROOT)
     full_eval_cb = FullValEachEpochCallback(eval_ds=val_ds, refs_map=refs_map, processor=processor, num_beams=1, gen_bs=16, max_new_tokens=MAX_NEW_TOKENS, temperature=TEMPERATURE)
-    es_cb = EarlyStopByMetric("eval_BERTScore_F1", greater_is_better=True, patience=8, save_best_dir=os.path.join(OUT_DIR, "best_by_BERTScore"))
+    es_cb = EarlyStopByMetric("eval_CIDEr", greater_is_better=True, patience=5, save_best_dir=os.path.join(OUT_DIR, "best_by_CIDEr"))
     data_collator = DataCollatorQwenVL(processor=processor)
 
     training_args = TrainingArguments(
