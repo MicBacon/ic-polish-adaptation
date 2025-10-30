@@ -152,8 +152,11 @@ class DataCollatorQwenVL:
     def __init__(self, processor):
         self.processor = processor
         self.tok = processor.tokenizer
+    
     def __call__(self, batch):
         texts, images, all_messages = [], [], []
+        assistant_texts = []
+        
         for item in batch:
             messages = item["messages"]
             image_inputs = _extract_images_from_messages(messages)
@@ -161,11 +164,15 @@ class DataCollatorQwenVL:
             texts.append(text)
             images.append(image_inputs)
             all_messages.append(messages)
+            assistant_texts.append(item.get("assistant_text", ""))
+        
         proc_out = self.processor(text=texts, images=images, padding=True, return_tensors="pt")
         input_ids = proc_out["input_ids"]
         attention_mask = proc_out["attention_mask"]
+        
         labels = input_ids.clone()
         labels[attention_mask == 0] = -100
+        
         mm_mask = proc_out.get("mm_token_mask", None)
         if mm_mask is not None:
             labels[mm_mask.bool()] = -100
@@ -176,19 +183,67 @@ class DataCollatorQwenVL:
                 labels[input_ids == image_id] = -100
             if video_id is not None:
                 labels[input_ids == video_id] = -100
-        prompt_texts = []
-        for m in all_messages:
-            prompt_only = [m[0], m[1]]
-            prompt_texts.append(self.processor.apply_chat_template(prompt_only, tokenize=False, add_generation_prompt=True))
-        enc = self.tok(prompt_texts, add_special_tokens=False, return_tensors="pt", padding=True)
-        prompt_lens = enc["input_ids"].ne(self.tok.pad_token_id).sum(-1).tolist()
-        max_len = labels.shape[1]
-        for i, L in enumerate(prompt_lens):
-            labels[i, :min(L, max_len)] = -100
-        batch_out = {"input_ids": input_ids, "labels": labels, "attention_mask": attention_mask}
+        
+        assistant_header = "<|im_start|>assistant\n"
+        assistant_header_ids = self.tok.encode(assistant_header, add_special_tokens=False)
+        
+        for i in range(len(batch)):
+            assistant_start_pos = None
+            seq_len = input_ids.shape[1]
+            header_len = len(assistant_header_ids)
+            
+            for j in range(seq_len - header_len + 1):
+                match = True
+                for k in range(header_len):
+                    if input_ids[i, j + k] != assistant_header_ids[k]:
+                        match = False
+                        break
+                
+                if match:
+                    assistant_start_pos = j + header_len
+                    break
+            
+            if assistant_start_pos is not None:
+                labels[i, :assistant_start_pos] = -100
+            else:
+                print(f"WARNING: Could not find assistant header in sample {i}, using fallback")
+                prompt_only = [all_messages[i][0], all_messages[i][1]]
+                prompt_text = self.processor.apply_chat_template(prompt_only, tokenize=False, add_generation_prompt=True)
+                enc = self.tok(prompt_text, add_special_tokens=False, return_tensors="pt", padding=False)
+                prompt_len = enc["input_ids"].shape[1]
+                labels[i, :min(prompt_len, seq_len)] = -100
+        
+        if True:
+            for i in range(min(2, len(batch))):
+                print(f"\n{'='*70}")
+                print(f"DEBUG SAMPLE {i}")
+                print(f"{'='*70}")
+                print(f"Full decoded text:\n{self.tok.decode(input_ids[i])[:500]}...")
+                print(f"\nTotal tokens: {input_ids.shape[1]}")
+                
+                masked_count = (labels[i] == -100).sum().item()
+                print(f"Masked tokens: {masked_count}")
+                
+                unmasked_ids = input_ids[i][labels[i] != -100]
+                if len(unmasked_ids) > 0:
+                    unmasked_text = self.tok.decode(unmasked_ids)
+                    print(f"\nWhat model learns (unmasked):\n{unmasked_text}")
+                else:
+                    print(f"\nWARNING: Everything is masked!")
+                
+                print(f"\nExpected assistant text:\n{assistant_texts[i]}")
+                print(f"{'='*70}\n")
+        
+        batch_out = {
+            "input_ids": input_ids,
+            "labels": labels,
+            "attention_mask": attention_mask
+        }
+        
         for k, v in proc_out.items():
             if k not in batch_out and isinstance(v, torch.Tensor):
                 batch_out[k] = v
+        
         return batch_out
 
 def load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs):
