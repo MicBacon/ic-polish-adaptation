@@ -6,6 +6,7 @@ from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallb
 from transformers import Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from PIL import Image
+from pathlib import Path
 import wandb
 
 try:
@@ -482,11 +483,21 @@ def main():
         task_type="CAUSAL_LM",
     )
 
-    #model = get_peft_model(model, lora_cfg)
-    if PEFT_ADAPTER_PATH:
-        if HAS_PEFT:
-            model = PeftModel.from_pretrained(model, PEFT_ADAPTER_PATH)
-            
+    adapter_ok = (
+        PEFT_ADAPTER_PATH 
+        and os.path.isdir(PEFT_ADAPTER_PATH) 
+        and os.path.isfile(os.path.join(PEFT_ADAPTER_PATH, "adapter_config.json"))
+    )
+
+    if adapter_ok and HAS_PEFT:
+        model = PeftModel.from_pretrained(model, PEFT_ADAPTER_PATH, is_trainable=True)
+        active_adapter = getattr(model, "active_adapter", "default")
+        print(f"[PEFT] Loaded adapter from {PEFT_ADAPTER_PATH} (active={active_adapter}) and set to trainable.")
+    else:
+        from peft import get_peft_model
+        model = get_peft_model(model, lora_cfg)
+        print("[PEFT] Initialized fresh LoRA adapters.")
+
     model.enable_input_require_grads()
     train_ds = CaptionTrainJsonDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
     val_ds = CaptionValJsonDataset(VAL_FILE, image_root=IMAGE_ROOT)
