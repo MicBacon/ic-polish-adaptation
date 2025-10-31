@@ -459,9 +459,7 @@ def main():
     )
 
     model = load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs)
-    if PEFT_ADAPTER_PATH:
-        if HAS_PEFT:
-            model = PeftModel.from_pretrained(model, PEFT_ADAPTER_PATH)
+
 
     model = prepare_model_for_kbit_training(model)
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
@@ -484,7 +482,11 @@ def main():
         task_type="CAUSAL_LM",
     )
 
-    model = get_peft_model(model, lora_cfg)
+    #model = get_peft_model(model, lora_cfg)
+    if PEFT_ADAPTER_PATH:
+        if HAS_PEFT:
+            model = PeftModel.from_pretrained(model, PEFT_ADAPTER_PATH)
+            
     model.enable_input_require_grads()
     train_ds = CaptionTrainJsonDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
     val_ds = CaptionValJsonDataset(VAL_FILE, image_root=IMAGE_ROOT)
