@@ -57,6 +57,7 @@ def image_id_from_path(p):
 def one_sentence(s: str) -> str:
     s = s.split("<|im_end|>")[0].splitlines()[0].strip()
     s = re.split(r'(?<=[\.\!\?])\s+', s)[0].strip()
+    s = re.sub(r'^[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+', '', s).strip()
     return s
 
 def _find_image_path(image_id, image_root):
