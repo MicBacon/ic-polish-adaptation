@@ -38,7 +38,7 @@ USE_FLASH_ATTN = True
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
 USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
 MAX_NEW_TOKENS = 128
-NUM_BEAMS = 3
+NUM_BEAMS = 1
 TEMPERATURE = 0.0
 
 os.environ["WANDB_PROJECT"] = "magisterka"
@@ -112,41 +112,56 @@ def normalize_records(raw_list, image_root):
 class CaptionValJsonDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = normalize_records(read_json(json_path), image_root)
-        self.samples = [{"image_path": r["image_path"], "assistant_text": random.choice(r["captions"]), "image_id": r["image_id"]} for r in raw]
-    def __len__(self):  return len(self.samples)
+        self.samples = raw
+    
+    def __len__(self):  
+        return len(self.samples)
+    
     def __getitem__(self, idx):
         ex = self.samples[idx]
+        caption = ex["captions"][0]
+        
         messages = [
             {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
             {"role": "user", "content": [
                 {"type": "image", "image": ex["image_path"]},
                 {"type": "text",  "text": USER_PROMPT},
             ]},
-            {"role": "assistant", "content": [{"type": "text", "text": ex["assistant_text"]}]},
+            {"role": "assistant", "content": [{"type": "text", "text": caption}]},
         ]
         return {
             "messages": messages,
             "image_path": ex["image_path"],
-            "assistant_text": ex["assistant_text"],
+            "assistant_text": caption,
             "image_id": ex["image_id"]
         }
 
 class CaptionTrainJsonDataset(Dataset):
     def __init__(self, json_path, image_root=""):
         raw = normalize_records(read_json(json_path), image_root)
-        self.samples = [{"image_path": r["image_path"], "assistant_text": random.choice(r["captions"]), "image_id": r["image_id"]} for r in raw]
-    def __len__(self): return len(self.samples)
+        self.samples = raw
+    
+    def __len__(self): 
+        return len(self.samples)
+    
     def __getitem__(self, idx):
         ex = self.samples[idx]
+        caption = random.choice(ex["captions"])
+        
         messages = [
             {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
             {"role": "user", "content": [
                 {"type": "image", "image": ex["image_path"]},
                 {"type": "text", "text": USER_PROMPT},
             ]},
-            {"role": "assistant", "content": [{"type": "text", "text": ex["assistant_text"]}]},
+            {"role": "assistant", "content": [{"type": "text", "text": caption}]},
         ]
-        return {"messages": messages, "image_path": ex["image_path"], "assistant_text": ex["assistant_text"], "image_id": ex["image_id"]}
+        return {
+            "messages": messages, 
+            "image_path": ex["image_path"], 
+            "assistant_text": caption,
+            "image_id": ex["image_id"]
+        }
 
 class DataCollatorQwenVL:
     def __init__(self, processor):
@@ -260,7 +275,7 @@ def load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs):
             last_err = e
     raise last_err
 
-def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens=128, temperature=0.0, gen_bs=8, use_cache=True):
+def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens=128, temperature=0.0, gen_bs=8, use_cache=True):
     import contextlib
     device = next(model.parameters()).device
     prev_attn = getattr(model.config, "attn_implementation", None)
@@ -312,7 +327,7 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                         **inputs,
                         max_new_tokens=max_new_tokens,
                         do_sample=False,
-                        num_beams=NUM_BEAMS,
+                        num_beams=num_beams,
                         pad_token_id=processor.tokenizer.eos_token_id,
                         eos_token_id=processor.tokenizer.eos_token_id,
                         early_stopping=True,
@@ -330,7 +345,7 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=1, max_new_tokens
                     **inputs,
                     max_new_tokens=max_new_tokens,
                     do_sample=False,
-                    num_beams=NUM_BEAMS,
+                    num_beams=num_beams,
                     pad_token_id=processor.tokenizer.eos_token_id,
                     eos_token_id=processor.tokenizer.eos_token_id,
                     early_stopping=True,
@@ -406,7 +421,7 @@ class FullValEachEpochCallback(TrainerCallback):
             return control
         preds, refs, imgs = do_eval_generate(
             self._trainer.model, self.p, self.eval_ds, self.refs_map,
-            num_beams=1, max_new_tokens=self.max_new_tokens, temperature=self.temperature, gen_bs=self.gen_bs, use_cache=True
+            num_beams=self.num_beams, max_new_tokens=self.max_new_tokens, temperature=self.temperature, gen_bs=self.gen_bs, use_cache=True
         )
         m = mc.compute_metrics_fast(preds, refs, imgs)
         logs = {f"eval_{k}": float(v) for k, v in m.items() if isinstance(v, (int, float))}
@@ -514,7 +529,7 @@ def main():
     es_cb.set_trainer(trainer)
 
     preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, 
-    num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
+    num_beams=NUM_BEAMS, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
 
     baseline_metrics = mc.compute_metrics_fast(preds, refs, img_paths)
     print("\n" + "="*70)
@@ -532,7 +547,7 @@ def main():
     processor.save_pretrained(OUT_DIR)
 
     model.eval()
-    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=1, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
+    preds, refs, img_paths = do_eval_generate(model, processor, val_ds, refs_map, num_beams=NUM_BEAMS, max_new_tokens=MAX_NEW_TOKENS, gen_bs=8, use_cache=True)
     metrics = mc.compute_metrics_fast(preds, refs, img_paths)
     mpath = os.path.join(OUT_DIR, "val_metrics.json")
     
