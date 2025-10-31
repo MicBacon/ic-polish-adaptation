@@ -6,7 +6,6 @@ from transformers import AutoProcessor, TrainingArguments, Trainer, TrainerCallb
 from transformers import Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from PIL import Image
-from qwen_vl_utils import process_vision_info as qwen_process_vision_info  # już masz
 from pathlib import Path
 import wandb
 
@@ -328,9 +327,10 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens
             text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
             texts.append(text)
             batch_images.append(_extract_images_from_messages(messages))
-        proc_inputs = processor(text=[text for _ in chunk], images=batch_images, return_tensors="pt", padding=True)
-        input_len = proc_inputs["input_ids"].shape[1]
-        inputs = {k: (v.to(device) if isinstance(v, torch.Tensor) else v) for k, v in proc_inputs.items()}
+        proc_inputs = processor(text=texts, images=batch_images, return_tensors="pt", padding=True)
+        input_lens = proc_inputs["attention_mask"].sum(-1)
+        inputs = {k: (v.to(device) if isinstance(v, torch.Tensor) else v)
+                  for k, v in proc_inputs.items()}
         with torch.inference_mode():
             try:
                 with autocast_ctx(**autocast_kwargs):
@@ -368,8 +368,9 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens
                     length_penalty=1.0
                 )
         for j, ex in enumerate(chunk):
-            gen_ids = generated[:, input_len:]
-            pred = processor.batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
+            start = int(input_lens[j].item())
+            gen_ids_j = generated[j, start:]
+            pred = processor.batch_decode(gen_ids_j.unsqueeze(0), skip_special_tokens=True)[0].strip()
             pred = one_sentence(pred)
             preds.append(pred)
             img_paths.append(ex["image_path"])
