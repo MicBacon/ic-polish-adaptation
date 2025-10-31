@@ -33,7 +33,7 @@ MODEL_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
 TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_train.json"
 VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"
 IMAGE_ROOT = "/workspace/shared/data/flickr30k"
-OUT_DIR = "out"
+OUT_DIR = "out_v2"
 EPOCHS = 15
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 8
@@ -42,7 +42,7 @@ LR = 1e-5
 WARMUP_RATIO = 0.1
 SAVE_STEPS = 1000
 USE_FLASH_ATTN = True
-PEFT_ADAPTER_PATH = "out/best_by_CIDEr"
+PEFT_ADAPTER_PATH = ""
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
 USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
 MIN_NEW_TOKENS = 4
@@ -346,7 +346,7 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens
                         use_cache=use_cache,
                         no_repeat_ngram_size=4,
                         repetition_penalty=1.15,
-                        length_penalty=1.0
+                        length_penalty=1.2
                     )
             except Exception:
                 try:
@@ -537,7 +537,7 @@ def main():
         disable_tqdm=True,
         log_level="info",
         report_to="wandb",
-        run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128_continuation",
+        run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128_v2",
         eval_strategy="epoch"
     )
 
