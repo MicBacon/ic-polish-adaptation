@@ -9,6 +9,12 @@ from PIL import Image
 import wandb
 
 try:
+    from peft import PeftModel
+    HAS_PEFT = True
+except Exception:
+    HAS_PEFT = False
+
+try:
     from shared.MetricComputer import MetricComputer
 except Exception:
     sys.path.append("../shared")
@@ -35,9 +41,10 @@ LR = 1e-5
 WARMUP_RATIO = 0.1
 SAVE_STEPS = 1000
 USE_FLASH_ATTN = True
+PEFT_ADAPTER_PATH = "out/best_by_CIDEr"
 SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w języku polskim. Napisz dokładnie jedno, pełne zdanie i zakończ je kropką. Nie zaczynaj drugiego zdania. Nie zgaduj."
 USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
-MIN_NEW_TOKENS = 14
+MIN_NEW_TOKENS = 4
 MAX_NEW_TOKENS = 128
 NUM_BEAMS = 1
 TEMPERATURE = 0.0
@@ -336,7 +343,8 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens
                         min_new_tokens=MIN_NEW_TOKENS,
                         use_cache=use_cache,
                         no_repeat_ngram_size=4,
-                        repetition_penalty=1.15
+                        repetition_penalty=1.15,
+                        length_penalty=1.0
                     )
             except Exception:
                 try:
@@ -354,7 +362,8 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens
                     min_new_tokens=MIN_NEW_TOKENS,
                     use_cache=use_cache,
                     no_repeat_ngram_size=4,
-                    repetition_penalty=1.15
+                    repetition_penalty=1.15,
+                    length_penalty=1.0
                 )
         for j, ex in enumerate(chunk):
             start = int(input_lens[j].item())
@@ -450,6 +459,10 @@ def main():
     )
 
     model = load_qwen_with_safe_attn(MODEL_PATH, bnb_config, model_kwargs)
+    if PEFT_ADAPTER_PATH:
+        if HAS_PEFT:
+            model = PeftModel.from_pretrained(model, PEFT_ADAPTER_PATH)
+
     model = prepare_model_for_kbit_training(model)
     processor = AutoProcessor.from_pretrained(MODEL_PATH, use_fast=False)
 
@@ -510,7 +523,7 @@ def main():
         disable_tqdm=True,
         log_level="info",
         report_to="wandb",
-        run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128_min_new_tokens_14",
+        run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128_continuation",
         eval_strategy="epoch"
     )
 
