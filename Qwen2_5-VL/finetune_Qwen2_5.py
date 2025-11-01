@@ -33,7 +33,7 @@ MODEL_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
 TRAIN_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_train.json"
 VAL_FILE = "../shared/data/flickr30k/flickr30kPolish_captions_val.json"
 IMAGE_ROOT = "/workspace/shared/data/flickr30k"
-OUT_DIR = "out_v2"
+OUT_DIR = "out_v3"
 EPOCHS = 15
 PER_DEVICE_TRAIN_BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH_SIZE = 8
@@ -47,7 +47,7 @@ SYSTEM_PROMPT = "Jesteś ekspertem od opisu obrazów. Odpowiadasz wyłącznie w 
 USER_PROMPT = "Opisz ten obraz w jednym zdaniu: kluczowe obiekty, relacje i tło. Tylko po polsku, jedno zdanie, koniec po kropce."
 MIN_NEW_TOKENS = 4
 MAX_NEW_TOKENS = 128
-NUM_BEAMS = 1
+NUM_BEAMS = 3
 TEMPERATURE = 0.0
 
 os.environ["WANDB_PROJECT"] = "magisterka"
@@ -238,28 +238,6 @@ class DataCollatorQwenVL:
                 prompt_len = enc["input_ids"].shape[1]
                 labels[i, :min(prompt_len, seq_len)] = -100
         
-        # DEBUG
-        # if True:
-        #     for i in range(min(2, len(batch))):
-        #         print(f"\n{'='*70}")
-        #         print(f"DEBUG SAMPLE {i}")
-        #         print(f"{'='*70}")
-        #         print(f"Full decoded text:\n{self.tok.decode(input_ids[i])[:500]}...")
-        #         print(f"\nTotal tokens: {input_ids.shape[1]}")
-                
-        #         masked_count = (labels[i] == -100).sum().item()
-        #         print(f"Masked tokens: {masked_count}")
-                
-        #         unmasked_ids = input_ids[i][labels[i] != -100]
-        #         if len(unmasked_ids) > 0:
-        #             unmasked_text = self.tok.decode(unmasked_ids)
-        #             print(f"\nWhat model learns (unmasked):\n{unmasked_text}")
-        #         else:
-        #             print(f"\nWARNING: Everything is masked!")
-                
-        #         print(f"\nExpected assistant text:\n{assistant_texts[i]}")
-        #         print(f"{'='*70}\n")
-        
         batch_out = {
             "input_ids": input_ids,
             "labels": labels,
@@ -365,7 +343,7 @@ def do_eval_generate(model, processor, ds, refs_map, num_beams=3, max_new_tokens
                     use_cache=use_cache,
                     no_repeat_ngram_size=4,
                     repetition_penalty=1.15,
-                    length_penalty=1.0
+                    length_penalty=1.2
                 )
         for j, ex in enumerate(chunk):
             start = int(input_lens[j].item())
@@ -502,7 +480,7 @@ def main():
     model.enable_input_require_grads()
     train_ds = CaptionTrainJsonDataset(TRAIN_FILE, image_root=IMAGE_ROOT)
     val_ds = CaptionValJsonDataset(VAL_FILE, image_root=IMAGE_ROOT)
-    full_eval_cb = FullValEachEpochCallback(eval_ds=val_ds, refs_map=refs_map, processor=processor, num_beams=1, gen_bs=16, max_new_tokens=MAX_NEW_TOKENS, temperature=TEMPERATURE)
+    full_eval_cb = FullValEachEpochCallback(eval_ds=val_ds, refs_map=refs_map, processor=processor, num_beams=3, gen_bs=16, max_new_tokens=MAX_NEW_TOKENS, temperature=TEMPERATURE)
     es_cb = EarlyStopByMetric("eval_CIDEr", greater_is_better=True, patience=5, save_best_dir=os.path.join(OUT_DIR, "best_by_CIDEr"))
     data_collator = DataCollatorQwenVL(processor=processor)
 
