@@ -515,7 +515,7 @@ def main():
         disable_tqdm=True,
         log_level="info",
         report_to="wandb",
-        run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128_v2",
+        run_name="qwen2.5-vl_finetune_epoch_eval_fullset_pl_128_v3",
         eval_strategy="epoch"
     )
 
