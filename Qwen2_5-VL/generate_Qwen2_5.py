@@ -18,13 +18,13 @@ MODEL_NAME_OR_PATH = "Qwen/Qwen2.5-VL-7B-Instruct"
 JSON_PATH = "../shared/data/flickr30k/flickr30kPolish_captions_test_std.json"
 IMAGE_ROOT = "../shared/data/flickr30k/Images"
 IMAGE_EXTS = "jpg,jpeg,png"
-PEFT_ADAPTER_PATH = "out/best_by_CIDEr"
+PEFT_ADAPTER_PATH = ""
 DEVICE = "auto"
 MAX_NEW_TOKENS = 128
 NUM_BEAMS = 3
 TEMPERATURE = 0.0
-OUTPUT_PREDICTIONS = "predictions_VAL_first_finetune_std.jsonl"
-OUTPUT_METRICS = "metrics_VAL_first_finetune_std.json"
+OUTPUT_PREDICTIONS = "predictions_nb_e1_128_update.jsonl"
+OUTPUT_METRICS = "metrics_nb_e1_128_update.json"
 MAX_SAMPLES = 0
 SAMPLE_INDEX = -1
 
