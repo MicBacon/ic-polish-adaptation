@@ -34,7 +34,8 @@ def model_inference(image, variant_name):
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto"
+        device_map="auto",
+        trust_remote_code=True,
     )
 
     model.eval()
@@ -42,8 +43,12 @@ def model_inference(image, variant_name):
     processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
 
     messages = [
-        {"role": "system", "content": ["Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."]},
-        {"role": "user", "content": [{"type": "image", "image": image}, {"type": "text", "text": "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."}]}
+        {"role": "system",
+         "content": "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."},
+        {"role": "user", "content": [
+            {"type": "image", "image": image},
+            {"type": "text", "text": "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."}
+        ]}
     ]
 
     text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
@@ -58,6 +63,7 @@ def model_inference(image, variant_name):
             temperature = None,
             num_beams = 1,
             pad_token_id=processor.tokenizer.eos_token_id,
+            eos_token_id=processor.tokenizer.eos_token_id,
             no_repeat_ngram_size=4,
             repetition_penalty=1.15
         )
