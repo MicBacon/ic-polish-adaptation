@@ -19,7 +19,7 @@ def produce_caption(image_pil, variant_name):
     try:
         files = {'file': ('image.png', img_byte_arr, 'image/png')}
         data  = {'model': variant_name}
-        response = requests.post(url, files=files, data=data, timeout=120) # 30s
+        response = requests.post(url, files=files, data=data, timeout=120)
         if response.status_code == 200:
             return response.json().get("caption", "Error getting json response.")
         else:
@@ -46,7 +46,7 @@ app = gr.Interface(
         gr.Dropdown(choices=CHOICES, label="Model variant", 
                     info="Choose one of the model variants from paper than click 'Submit' to produce caption.")
     ],
-    outputs=gr.Textbox(label="Caption")
+    outputs=gr.Textbox(label="Caption", scale=1)
 )
 
 app.launch(server_name="0.0.0.0", server_port=7861, auth=('tester', 'test'))
