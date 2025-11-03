@@ -148,7 +148,7 @@ def generate_caption_for_image(
             num_beams=(num_beams if num_beams and num_beams > 1 and temperature == 0.0 else 1),
             pad_token_id=processor.tokenizer.eos_token_id,
             no_repeat_ngram_size=4,
-            repetition_penalty=1.25
+            repetition_penalty=1.15
         )
 
     input_len = inputs["input_ids"].shape[1]

@@ -7,16 +7,26 @@ INPUT_PATHS = [#'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_12
                #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_128_update.jsonl',
                #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_96_update.jsonl',
                #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_96_update.jsonl',
-               '../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512.jsonl',
-               '../Qwen2_5-VL/eval_results/raw_ext_pl_test_std/predictions_nb_e2_512.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_ext_pl_test_std/predictions_nb_e2_512.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512_update.jsonl'
+               #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_128_update.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_ft_pl_test_hq/predictions_nb_e4.jsonl',
+               #'../Qwen2_5-VL/eval_results/raw_ft_pl_test_std/predictions_nb_e4.jsonl',
+               '../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_128_update.jsonl',
                ]
 RESULT_PATH = 'just_evaluate_results/'
 DST_FILES = [#'Qwen2_5-VL_raw_pl_test_std_nb_e1_128.json',
              #'Qwen2_5-VL_raw_pl_test_std.json',
              #'Qwen2_5-VL_raw_pl_test_std_nb_e1_96_update.json'
              #'Qwen2_5-VL_raw_pl_test_hq_nb_e1_96_update.json',
-             'Qwen2_5-VL_raw_ext_pl_test_hq_nb_e2.json',
-             'Qwen2_5-VL_raw_ext_pl_test_std_nb_e2.json',
+             #'Qwen2_5-VL_raw_ext_pl_test_hq_nb_e2.json',
+             #'Qwen2_5-VL_raw_ext_pl_test_std_nb_e2.json',
+             #'Qwen2_5-VL_raw_ext_pl_test_hq_nb_e2_update.json',
+             #'Qwen2_5-VL_raw_pl_test_hq_nb_e1_128_update.json',
+             #'Qwen2_5-VL_raw_ft_pl_test_hq_nb_e4.json',
+             #'Qwen2_5-VL_raw_ft_pl_test_std_nb_e4.json',
+             'THIS_Qwen2_5-VL_raw_pl_test_std_nb_e1_128_update.json',
              ]
 
 nlp = stanza.Pipeline(

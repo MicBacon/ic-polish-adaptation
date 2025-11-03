@@ -27,15 +27,6 @@ except Exception:
 
 app = FastAPI()
 
-# ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=[o.strip() for o in ALLOWED_ORIGINS],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
 def model_inference(image, variant_name):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
@@ -94,4 +85,4 @@ async def generate_caption(file: UploadFile = File(...), model: str = Form(...))
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "ctn": "gradio-service-ctn"}

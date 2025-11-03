@@ -9,19 +9,23 @@ from bert_score import BERTScorer
 from MetricComputer import MetricComputer
 
 INPUT_PATHS = [
-    #'../Qwen2_5-VL/eval_results/raw_en_test_hq/predictions.jsonl',
-    #'../Qwen2_5-VL/eval_results/raw_en_test_std/predictions.jsonl',
+    '../Qwen2_5-VL/eval_results/raw_en_test_hq/predictions.jsonl',
+    '../Qwen2_5-VL/eval_results/raw_en_test_std/predictions.jsonl',
     #'../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_hq.json',
     #'../mPLUG/output/flickr30k/eval_after_flickr_finetune_test_std.json',
-    '../mPLUG/output/flickr30k/eval_after_full_finetune_test_hq.json',
+    #'../mPLUG/output/flickr30k/eval_after_full_finetune_test_hq.json',
     #'../mPLUG/output/flickr30k/eval_after_full_finetune_test_std.json',
 ]
 DST_FILES = [
+    'Qwen2_5-VL_raw_en_test_hq_FINAL_translator_check.json',
+    'Qwen2_5-VL_raw_en_test_std_FINAL_translator_check.json',
+    #'Qwen2_5-VL_raw_en_test_hq_ALL_lemma_check.json',
+    #'Qwen2_5-VL_raw_en_test_std_ALL_lemma_check.json',
     #'Qwen2_5-VL_raw_en_test_hq.json',
     #'Qwen2_5-VL_raw_en_test_std.json',
     #'mPLUG_flickr_en_test_hq.json',
     #'mPLUG_flickr_en_test_std.json',
-    'mPLUG_FULL_test_hq.json',
+    #'mPLUG_FULL_test_hq.json',
     #'mPLUG_FULL_test_std.json',
 ]
 RESULTS_FOLDER = 'translate_evaluate_results/'

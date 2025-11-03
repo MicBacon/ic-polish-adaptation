@@ -9,8 +9,10 @@ INPUT_FILES = [#'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_128
               #'translate_evaluate_results/bing/Qwen2_5-VL_raw_en_test_std.json',
               #'../Qwen2_5-VL/eval_results/raw_pl_test_hq/predictions_nb_e1_128_update.jsonl',
               #'../Qwen2_5-VL/eval_results/raw_pl_test_std/predictions_nb_e1_96_update.jsonl',
-              '../Qwen2_5-VL/eval_results/raw_ext_pl_test_std/predictions_nb_e2_512.jsonl',
-              '../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512.jsonl',
+              #'../Qwen2_5-VL/eval_results/raw_ext_pl_test_std/predictions_nb_e2_512.jsonl',
+              #'../Qwen2_5-VL/eval_results/raw_ext_pl_test_hq/predictions_nb_e2_512.jsonl',
+               '../Qwen2_5-VL/eval_results/raw_ft_pl_test_hq/predictions_nb_e4.jsonl',
+               '../Qwen2_5-VL/eval_results/raw_ft_pl_test_std/predictions_nb_e4.jsonl',
               ]
 
 def nfc(s):
