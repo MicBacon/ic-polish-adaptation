@@ -26,7 +26,7 @@ def produce_caption(image_pil, variant_name):
             return f"Not OK ({response.status_code}): {response.text}"
             
     except requests.exceptions.ConnectionError:
-        return f"Can't connect to {url}."
+        return f"Can't connect to {variant_name} server."
     except Exception as e:
         return f"Unexpected error: {e}"
     
