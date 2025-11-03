@@ -25,5 +25,4 @@ RUN pip install -U pip setuptools wheel && \
     pip install --no-cache-dir "uvicorn[standard]" fastapi python-multipart
 
 
-EXPOSE 7862
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7862"]

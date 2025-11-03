@@ -7,7 +7,7 @@ MPLUG_URL = "http://gradio-mplug-ctn:7863/generate_caption"
 QWEN_URL = "http://gradio-qwen-ctn:7862/generate_caption"
 
 def produce_caption(image_pil, variant_name):
-    if 'mPLUG' in variant_name:
+    if 'mplug' in variant_name:
         url = MPLUG_URL
     else:
         url = QWEN_URL
@@ -19,7 +19,7 @@ def produce_caption(image_pil, variant_name):
     try:
         files = {'file': ('image.png', img_byte_arr, 'image/png')}
         data  = {'model': variant_name}
-        response = requests.post(url, files=files, data=data, timeout=30) # 30s
+        response = requests.post(url, files=files, data=data, timeout=120) # 30s
         if response.status_code == 200:
             return response.json().get("caption", "Error getting json response.")
         else:
