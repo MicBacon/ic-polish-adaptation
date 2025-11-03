@@ -73,6 +73,14 @@ def model_inference(image, variant_name):
     out_text = processor.batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
     return out_text
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
 @app.post("/generate_caption")
 async def generate_caption(file: UploadFile = File(...), model: str = Form(...)):
     data = await file.read()
