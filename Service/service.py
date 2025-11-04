@@ -51,8 +51,7 @@ app = gr.Interface(
         gr.Dropdown(choices=CHOICES, label="Model variant", 
                     info="Choose one of the model variants from paper than click 'Submit' to produce caption.")
     ],
-    outputs=gr.Textbox(label="Caption",
-                       max_lines=60)
+    outputs=gr.Textbox(label="Caption", lines=50)
 )
 
 app.launch(server_name="0.0.0.0", server_port=7861, auth=('tester', 'test'))
