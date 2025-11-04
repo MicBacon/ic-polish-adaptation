@@ -1,6 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from omegaconf import OmegaConf
+from peft import PeftModel
 from io import BytesIO
 from PIL import Image
 import os
@@ -28,6 +30,7 @@ except Exception:
 app = FastAPI()
 
 def model_inference(image, variant_name):
+    config = OmegaConf.load(f"{variant_name}.yaml")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
 
@@ -38,16 +41,19 @@ def model_inference(image, variant_name):
         trust_remote_code=True,
     )
 
+    if config.checkpoint.path:
+        model = PeftModel.from_pretrained(model, config.checkpoint.path)
+
     model.eval()
 
     processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
 
     messages = [
         {"role": "system",
-         "content": "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."},
+         "content": config.prompt.system},
         {"role": "user", "content": [
             {"type": "image", "image": image},
-            {"type": "text", "text": "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."}
+            {"type": "text", "text": config.prompt.user}
         ]}
     ]
 
@@ -58,14 +64,14 @@ def model_inference(image, variant_name):
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
-            max_new_tokens=128,
+            max_new_tokens=config.params.max_new_tokens,
             do_sample = False,
             temperature = None,
             num_beams = 1,
             pad_token_id=processor.tokenizer.eos_token_id,
             eos_token_id=processor.tokenizer.eos_token_id,
-            no_repeat_ngram_size=4,
-            repetition_penalty=1.15
+            no_repeat_ngram_size=config.params.no_repeat_ngram_size,
+            repetition_penalty=config.params.repetition_penalty
         )
 
     input_len = inputs["input_ids"].shape[1]

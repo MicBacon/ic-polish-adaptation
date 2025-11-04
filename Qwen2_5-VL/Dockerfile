@@ -24,5 +24,4 @@ RUN pip install -U pip setuptools wheel && \
     pip install flash-attn --no-build-isolation && \
     pip install --no-cache-dir "uvicorn[standard]" fastapi python-multipart
 
-
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7862"]

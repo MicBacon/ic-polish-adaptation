@@ -1,0 +1,11 @@
+params:
+  max_new_tokens: 128
+  repetition_penalty: 1.15
+  no_repeat_ngram_size: 4
+
+prompt:
+  system: "Jesteś ekspertem od opisu obrazów. Pisz po polsku, jasno i bez halucynacji."
+  user: "Opisz ten obraz w 1 zdaniu. Uwzględnij obiekty, relacje i tło. Nie zgaduj."
+
+checkpoint:
+  path: "best_by_CIDEr_min_t_4"

@@ -64,43 +64,6 @@ except Exception:
     process_vision_info = fallback_process_vision_info
 
 
-def load_compute_metrics(module_path):
-    if module_path:
-        path = os.path.abspath(module_path)
-        if os.path.isfile(path):
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("compute_metrics", path)
-            mod = importlib.util.module_from_spec(spec)
-            assert spec and spec.loader
-            spec.loader.exec_module(mod)
-            if hasattr(mod, "compute_metrics"):
-                return mod.compute_metrics
-
-    def fallback_metrics(preds, refs, image_paths=None):
-        out = {}
-        try:
-            import sacrebleu
-            max_k = max(len(r) for r in refs) if refs else 0
-            ref_sets = []
-            for k in range(max_k):
-                ref_sets.append([(r[k] if k < len(r) else r[-1]) for r in refs])
-            bleu = sacrebleu.corpus_bleu(preds, ref_sets, tokenize="intl")
-            out["SacreBLEU"] = float(bleu.score)
-        except Exception:
-            pass
-        try:
-            from bert_score import score as bert_score
-            first_refs = [r[0] if len(r) > 0 else "" for r in refs]
-            _, _, F1 = bert_score(preds, first_refs, lang="pl", rescale_with_baseline=True)
-            out["BERTScore_F1"] = float(F1.mean().item())
-        except Exception:
-            pass
-        out["Len_pred_tokens_avg"] = sum(len(p.split()) for p in preds) / max(1, len(preds))
-        return out
-
-    return fallback_metrics
-
-
 def read_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)

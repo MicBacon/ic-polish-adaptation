@@ -18,3 +18,4 @@ einops
 qwen-vl-utils
 hf-transfer
 bitsandbytes
+omegaconf
