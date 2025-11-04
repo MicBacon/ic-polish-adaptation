@@ -9,8 +9,13 @@ QWEN_URL = "http://gradio-qwen-ctn:7862/generate_caption"
 def produce_caption(image_pil, variant_name):
     if 'mplug' in variant_name:
         url = MPLUG_URL
-    else:
+    elif 'qwen' in variant_name:
         url = QWEN_URL
+    else:
+        return 'You must specify a variant in dropdownlist.'
+    
+    if not image_pil:
+        return 'You must upload an image.'
 
     img_byte_arr = io.BytesIO()
     image_pil.save(img_byte_arr, format='PNG')
