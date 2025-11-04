@@ -37,8 +37,8 @@ def produce_caption(image_pil, variant_name):
     
 CHOICES = [
     ("mPLUG (Flickr30k only)", "mplug-flickr-only"),
-    ("mPLUG (Full)",           "mplug-full"),
-    ("Qwen2.5-VL-7B EN->PL",   "qwen-en2pl"),
+    ("mPLUG (Full)", "mplug-full"),
+    ("Qwen2.5-VL-7B EN->PL", "qwen-en2pl"),
     ("Qwen2.5-VL-7B (baseline)", "qwen-baseline"),
     ("Qwen2.5-VL-7B (extended)", "qwen-ext"),
     ("Qwen2.5-VL-7B (finetuned)", "qwen-ft"),
@@ -51,7 +51,7 @@ app = gr.Interface(
         gr.Dropdown(choices=CHOICES, label="Model variant", 
                     info="Choose one of the model variants from paper than click 'Submit' to produce caption.")
     ],
-    outputs=gr.Textbox(label="Caption", lines=50)
+    outputs=gr.Textbox(label="Caption", lines=6)
 )
 
 app.launch(server_name="0.0.0.0", server_port=7861, auth=('tester', 'test'))
