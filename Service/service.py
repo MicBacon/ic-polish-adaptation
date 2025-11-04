@@ -64,4 +64,4 @@ with gr.Blocks() as demo:
         return None, gr.update(value=DEFAULT_VARIANT), ""
     clear.click(reset_fn, outputs=[image, variant, caption])
 
-demo.launch()
+demo.launch(server='0.0.0.0', port=7861, auth=('tester', 'test'))
