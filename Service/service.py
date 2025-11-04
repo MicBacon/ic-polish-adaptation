@@ -48,7 +48,7 @@ app = gr.Interface(
     fn=produce_caption,
     inputs=[
         gr.Image(label="Input Image", type="pil"), 
-        gr.Dropdown(choices=CHOICES, label="Model variant", value=CHOICES[0][0],
+        gr.Dropdown(choices=CHOICES, label="Model variant", value=CHOICES[0][1],
                     info="Choose one of the model variants from paper than click 'Submit' to produce caption.")
     ],
     outputs=gr.Textbox(label="Caption", lines=10)
