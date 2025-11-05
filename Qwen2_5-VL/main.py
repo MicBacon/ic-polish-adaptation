@@ -89,8 +89,8 @@ def model_inference(image, variant_name):
             )
         except Exception as e :
             return f'[ERROR] Translator problem: {e}'
-    else:
-        return out_text
+    
+    return out_text
 
 app.add_middleware(
     CORSMiddleware,
