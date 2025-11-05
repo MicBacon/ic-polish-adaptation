@@ -30,7 +30,7 @@ except Exception:
 app = FastAPI()
 
 def model_inference(image, variant_name):
-    config = OmegaConf.load(f"{variant_name}.yaml")
+    config = OmegaConf.load(f"configs/{variant_name}.yaml")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
 
