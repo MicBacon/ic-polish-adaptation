@@ -105,4 +105,4 @@ async def generate_caption(file: UploadFile = File(...), model: str = Form(...))
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "ctn": "gradio-service-ctn"}
+    return {"status": "ok", "ctn": "gradio-qwen-ctn"}
