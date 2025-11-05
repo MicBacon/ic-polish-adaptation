@@ -5,9 +5,10 @@ from omegaconf import OmegaConf
 from peft import PeftModel
 from io import BytesIO
 from PIL import Image
-import os
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+import os
 import torch
+import translators as ts
 
 def fallback_process_vision_info(messages):
     images_batch = []
@@ -77,7 +78,19 @@ def model_inference(image, variant_name):
     input_len = inputs["input_ids"].shape[1]
     gen_ids = generated_ids[:, input_len:]
     out_text = processor.batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
-    return out_text
+
+    if config.lang == "en":
+        try:
+            out_text =  ts.translate_text(
+                out_text,
+                translator='bing',
+                from_language='en',
+                to_language='pl'
+            )
+        except Exception as e :
+            return f'[ERROR] Translator problem: {e}'
+    else:
+        return out_text
 
 app.add_middleware(
     CORSMiddleware,

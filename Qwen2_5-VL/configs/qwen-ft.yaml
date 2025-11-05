@@ -9,3 +9,5 @@ prompt:
 
 checkpoint:
   path: "best_by_CIDEr_min_t_4"
+
+lang: pl

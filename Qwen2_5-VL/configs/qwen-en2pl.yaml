@@ -1,0 +1,13 @@
+params:
+  max_new_tokens: 64
+  repetition_penalty: 1.0 # default
+  no_repeat_ngram_size: 0 # default
+
+prompt:
+  system: "You are an expert in image captioning. Write clearly and without hallucinating."
+  user: "Describe this image in one sentence. Consider objects, relations and background. Do not guess."
+
+checkpoint:
+  path: ""
+
+lang: en

@@ -9,3 +9,5 @@ prompt:
 
 checkpoint:
   path: ""
+
+lang: pl

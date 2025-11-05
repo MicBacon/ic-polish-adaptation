@@ -19,3 +19,4 @@ qwen-vl-utils
 hf-transfer
 bitsandbytes
 omegaconf
+translators
